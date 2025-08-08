@@ -181,13 +181,9 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             color="blue",
         )
         ax[0, 2].set_xlabel(r"$\lambda [\mu m]$")
-        ax[0, 2].set_ylabel(r"$a$")
-        ax[0, 2].set_xscale("log")
+        ax[0, 2].set_ylabel(r"$\alpha$")
         ax[0, 2].set_ylim(0.0, 1.0)
-        ax[0, 2].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
-        ax[0, 2].legend()
+        ax[0, 2].legend(loc="lower right")
 
     if OD.fit_scat_g:
         ax[1, 2].errorbar(
@@ -200,11 +196,7 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
         )
         ax[1, 2].set_xlabel(r"$\lambda [\mu m]$")
         ax[1, 2].set_ylabel(r"$g$")
-        ax[1, 2].set_xscale("log")
         ax[1, 2].set_ylim(0.0, 1.0)
-        ax[1, 2].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
         ax[1, 2].legend()
 
     plt.tight_layout()

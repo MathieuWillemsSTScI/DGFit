@@ -3,7 +3,6 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as pyplot
 import matplotlib
-from matplotlib.ticker import LogLocator
 from astropy.io import fits
 
 from dgfit.obsdata import ObsData
@@ -44,7 +43,7 @@ def get_krange(x, logaxis=False, in_range=[0]):
 def plot_dgfit_sizedist(
     ax,
     hdulist,
-    colors=["b", "g", "c", "r"],
+    colors=["b", "g", "c", "y"],
     fontsize=12,
     mass=True,
     plegend=True,
@@ -152,7 +151,7 @@ def plot_dgfit_abundances(
 
 # plot the extinction curves (total and components)
 def plot_dgfit_extinction(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["EXT"], colors[0] + ltype)
     yrange = get_krange(hdu.data["EXT"], logaxis=True)
@@ -187,7 +186,7 @@ def plot_dgfit_extinction(
 
 # plot the emission spectra (total and components)
 def plot_dgfit_emission(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["EMIS"], colors[0] + ltype)
     yrange = get_krange(hdu.data["EMIS"], logaxis=True)
@@ -228,7 +227,7 @@ def plot_dgfit_emission(
 
 # plot the dust scattering albedo
 def plot_dgfit_albedo(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["ALBEDO"], colors[0] + ltype)
     yrange = get_krange(hdu.data["ALBEDO"])
@@ -255,17 +254,15 @@ def plot_dgfit_albedo(
             label="Observed",
         )
 
-    ax.set_xscale("log")
     ax.set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
     ax.set_ylabel(r"$albedo$", fontsize=fontsize)
     ax.set_xlim(get_krange(hdu.data["WAVE"], logaxis=True))
     ax.set_ylim([0.0, 1.0])
-    ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10))
 
 
 # plot the dust scattering phase function asymmetry
 def plot_dgfit_g(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["G"], colors[0] + ltype)
     yrange = get_krange(hdu.data["G"])
@@ -292,12 +289,10 @@ def plot_dgfit_g(
             label="Observed",
         )
 
-    ax.set_xscale("log")
     ax.set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
     ax.set_ylabel(r"$g$", fontsize=fontsize)
     ax.set_xlim(get_krange(hdu.data["WAVE"], logaxis=True))
     ax.set_ylim([0.0, 1.0])
-    ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10))
 
 
 def main():

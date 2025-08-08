@@ -122,6 +122,9 @@ def DGFit_cmdparser():
     parser.add_argument(
         "--nolarge", action="store_true", help="Deweight a > 0.5 micron by 1e-10"
     )
+    parser.add_argument(
+        "--weight_by_average_unc", action="store_true", default=False, help="weight the observations by the average uncertainty, divide by number of points"
+    )
 
     return parser
 
@@ -451,7 +454,7 @@ def main():
         nsteps = 10000
         burnfrac = 0.2
     else:
-        burnfrac = int(args.burnfrac)
+        burnfrac = float(args.burnfrac)
         nsteps = int(args.nsteps)
 
     # get the location of the provided data
@@ -473,8 +476,8 @@ def main():
             every_nth=args.everynth,
             limit_abundances=args.limit_abund,
             variable_ISRF=args.no_variable_ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
-
     for i, comp in enumerate(compnames):
         print(
             f"# of grain sizes for {comp} = {len(dustmodel_full.components[i].sizes)}"
@@ -490,6 +493,7 @@ def main():
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
 
         p0, _pnames = setparams_MRN(dustmodel, obsdata, 1, 1, ISRF)
@@ -507,6 +511,7 @@ def main():
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
 
         p0, _pnames = setparams_WD(dustmodel, obsdata, 1, 1, ISRF)
@@ -524,6 +529,7 @@ def main():
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
 
         p0, _pnames = setparams_Z04(dustmodel, obsdata, 1, 1, ISRF)
@@ -541,6 +547,7 @@ def main():
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
 
         p0, _pnames = setparams_HD(dustmodel, obsdata, 1, 1, ISRF)
@@ -558,6 +565,7 @@ def main():
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
 
         p0, _pnames = setparams_Themis(dustmodel, obsdata, 1, 1, ISRF)
@@ -577,6 +585,7 @@ def main():
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
         )
 
         # replace the default size distribution with one from a file
@@ -601,9 +610,9 @@ def main():
 
                     # deweight large grains (test)
                     if args.nolarge:
-                        (indxs,) = np.where(component.sizes > 0.5e-4)
+                        (indxs,) = np.where(component.sizes > 10e-4)
                         if len(indxs) > 0:
-                            print("deweighting sizes > 0.5 micron")
+                            print("deweighting sizes > 10 micron")
                             component.size_dist[indxs] *= 1e-10
 
             if args.limit_abund:
@@ -644,8 +653,14 @@ def main():
         call_count["n"] += 1
         if call_count["n"] % 500 == 0:
             print(
-                f"Call {call_count['n']}: {-dustmodel.lnprob(*args)}"
+                f"Call {call_count['n']}: ln(p) = {-dustmodel.lnprob(*args)}"
             )  # added this line to check when the minimizer converges
+            print(f"Number of points: {dustmodel.fracs[5]}")
+            print(f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})")
+            print(f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})")
+            print(f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})")
+            print(f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})")
+            print(f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})")
         return -dustmodel.lnprob(*args)
 
     soln = minimize(

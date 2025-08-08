@@ -65,6 +65,7 @@ class DustModel(object):
         every_nth=5,
         limit_abundances=None,
         variable_ISRF=True,
+        divide_npoints=False
     ):
         self.origin = None
         self.n_components = 0
@@ -74,6 +75,8 @@ class DustModel(object):
         self.parameters = {}
         self.abundance_constraint = limit_abundances
         self.variable_ISRF = variable_ISRF
+        self.fracs = []
+        self.divide_npoints = divide_npoints
 
         # populate the grain info
         if componentnames is not None:
@@ -366,7 +369,6 @@ class DustModel(object):
             if np.sum(bandvals) > 0:
                 weights[bandvals] *= 1000
             lnp_alav = -0.5 * np.sum(((obsdata.ext_alav - dust_alav) * weights) ** 2)
-            lnp_alav /= obsdata.ext_npts
 
         # compute the ln(prob) for the depletions
         lnp_dep = 0.0
@@ -393,7 +395,6 @@ class DustModel(object):
                             / (obsdata.abundance_av[atomname][1])
                         ) ** 2
             lnp_dep *= -0.5
-            lnp_dep /= obsdata.abundance_npts
 
         # compute the ln(prob) for IR emission
         lnp_emission = 0.0
@@ -405,7 +406,6 @@ class DustModel(object):
                     ** 2
                 )
             )
-            lnp_emission /= obsdata.ir_emission_npts
 
         # compute the ln(prob) for the dust albedo
         lnp_albedo = 0.0
@@ -414,17 +414,27 @@ class DustModel(object):
             lnp_albedo = -0.5 * np.sum(
                 (((obsdata.scat_albedo - albedo) / (obsdata.scat_albedo_unc)) ** 2)
             )
-            lnp_albedo /= obsdata.scat_a_npts
 
         # compute the ln(prob) for the dust g
         lnp_g = 0.0
         if obsdata.fit_scat_g:
             g = results["g"]
             lnp_g = -0.5 * np.sum((((obsdata.scat_g - g) / (obsdata.scat_g_unc)) ** 2))
+
+        total_points = obsdata.ext_npts + obsdata.abundance_npts + obsdata.ir_emission_npts + obsdata.scat_a_npts + obsdata.scat_g_npts
+
+        if self.divide_npoints:
+            lnp_alav /= obsdata.ext_npts
+            lnp_dep /= obsdata.abundance_npts
+            lnp_emission /= obsdata.ir_emission_npts
+            lnp_albedo /= obsdata.scat_a_npts
             lnp_g /= obsdata.scat_g_npts
+            total_points = 5
 
         # combine the lnps
         lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
+        fit_weights = [lnp_alav / lnp, lnp_dep / lnp, lnp_emission / lnp, lnp_albedo / lnp, lnp_g / lnp, total_points]
+        self.fracs = fit_weights
 
         if math.isinf(lnp) | math.isnan(lnp):
             return -np.inf

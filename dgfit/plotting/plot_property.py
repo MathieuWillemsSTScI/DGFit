@@ -123,6 +123,8 @@ def main():
     OD = ObsData(args.obsfile)
     rechte = []
 
+    mark = 1
+
     if args.dustproperty == "emission":
         waves = OD.ir_emission_waves
         data_waves = hdu.data["WAVE"]
@@ -148,6 +150,7 @@ def main():
         if args.no_ylogscale:
             ylogscale = False
         ylim = False
+        mark = 1
 
     elif args.dustproperty == "albedo":
         waves = OD.scat_a_waves
@@ -206,6 +209,7 @@ def main():
             colors[i + 1] + ltype,
             label=comps[i],
             marker=markers[i],
+            markevery=mark
         )
         yrange = get_krange(hdu.data[data_name + str(i + 1)], in_range=yrange)
 
@@ -216,6 +220,7 @@ def main():
         fmt="ko",
         label="Observed",
         capsize=3,
+        markevery=mark
     )
 
     if args.add_fitted_line:
