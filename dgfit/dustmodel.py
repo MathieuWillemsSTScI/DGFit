@@ -66,7 +66,7 @@ class DustModel(object):
         limit_abundances=None,
         variable_ISRF=True,
         divide_npoints=False,
-        start_ISRF=1
+        start_ISRF=1,
     ):
         self.origin = None
         self.n_components = 0
@@ -423,20 +423,26 @@ class DustModel(object):
             g = results["g"]
             lnp_g = -0.5 * np.sum((((obsdata.scat_g - g) / (obsdata.scat_g_unc)) ** 2))
 
-        total_points = obsdata.ext_npts + obsdata.abundance_npts + obsdata.ir_emission_npts + obsdata.scat_a_npts + obsdata.scat_g_npts
+        total_points = (
+            obsdata.ext_npts
+            + obsdata.abundance_npts
+            + obsdata.ir_emission_npts
+            + obsdata.scat_a_npts
+            + obsdata.scat_g_npts
+        )
 
         if self.divide_npoints:
             tot = 0
             if obsdata.ext_npts > 0:
                 lnp_alav /= obsdata.ext_npts
                 tot += 1
-            if obsdata.abundance_npts > 0:    
+            if obsdata.abundance_npts > 0:
                 lnp_dep /= obsdata.abundance_npts
                 tot += 1
-            if obsdata.ir_emission_npts > 0:    
+            if obsdata.ir_emission_npts > 0:
                 lnp_emission /= obsdata.ir_emission_npts
                 tot += 1
-            if obsdata.scat_a_npts > 0:    
+            if obsdata.scat_a_npts > 0:
                 lnp_albedo /= obsdata.scat_a_npts
                 tot += 1
             if obsdata.scat_g_npts:
@@ -446,7 +452,14 @@ class DustModel(object):
 
         # combine the lnps
         lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
-        fit_weights = [lnp_alav / lnp, lnp_dep / lnp, lnp_emission / lnp, lnp_albedo / lnp, lnp_g / lnp, total_points]
+        fit_weights = [
+            lnp_alav / lnp,
+            lnp_dep / lnp,
+            lnp_emission / lnp,
+            lnp_albedo / lnp,
+            lnp_g / lnp,
+            total_points,
+        ]
         self.fracs = fit_weights
 
         if math.isinf(lnp) | math.isnan(lnp):
@@ -1159,14 +1172,14 @@ class ZDA04DustModel(DustModel):
             for component in self.components:
                 if component.name == "PAH-ZDA04":
                     self.n_params.append(7)
-                    self.parameters["PAH-ZDA04"] = {          #ACH2 model /// Graphite model
-                        "A": 2.484404e-3 / (5.34e-22),      #4.727727e-3 /// 2.484404e-3
-                        "c_0": -8.54571,                    #-8.91244 /// -8.54571
-                        "b_0": -3.60112,                    #-3.72015 /// -3.60112
-                        "b_1": 1.86525e5,                   #6.78215e5 /// 1.86525e5
-                        "m_1": -13.5755,                    #-14.2532 /// -13.5755
-                        "a_3": 1.98119e-3,                  #1.58225e-3 /// 1.98119e-3
-                        "m_3": 9.25894,                     #8.71891 /// 9.25894
+                    self.parameters["PAH-ZDA04"] = {  # ACH2 model /// Graphite model
+                        "A": 2.484404e-3 / (5.34e-22),  # 4.727727e-3 /// 2.484404e-3
+                        "c_0": -8.54571,  # -8.91244 /// -8.54571
+                        "b_0": -3.60112,  # -3.72015 /// -3.60112
+                        "b_1": 1.86525e5,  # 6.78215e5 /// 1.86525e5
+                        "m_1": -13.5755,  # -14.2532 /// -13.5755
+                        "a_3": 1.98119e-3,  # 1.58225e-3 /// 1.98119e-3
+                        "m_3": 9.25894,  # 8.71891 /// 9.25894
                     }
                 elif component.name == "Graphite-ZDA04":
                     self.n_params.append(12)
@@ -1745,7 +1758,7 @@ class Y24DustModel(DustModel):
             )
 
             sizedist = np.concatenate((small, large))
-            
+
         if composition == "a-C:H-Y24":
             (indxs,) = np.where(np.logical_or(a < 0.04495579, a > 0.7))
             if len(indxs) > 0:
@@ -1755,7 +1768,7 @@ class Y24DustModel(DustModel):
             (indxs,) = np.where(np.logical_or(a < 0.011, a > 0.3737511))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
-        
+
         if composition == "a-C-Y24":
             (indxs,) = np.where(np.logical_or(a < 0.0004, a > 0.025))
             if len(indxs) > 0:

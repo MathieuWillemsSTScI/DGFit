@@ -121,7 +121,10 @@ def DGFit_cmdparser():
         "--nolarge", action="store_true", help="Deweight a > 0.5 micron by 1e-10"
     )
     parser.add_argument(
-        "--weight_by_average_unc", action="store_true", default=False, help="weight the observations by the average uncertainty, divide by number of points"
+        "--weight_by_average_unc",
+        action="store_true",
+        default=False,
+        help="weight the observations by the average uncertainty, divide by number of points",
     )
     parser.add_argument(
         "--start_ISRF", type=int, default=1, help="Strength of ISRF to start"
@@ -478,7 +481,7 @@ def main():
             limit_abundances=args.limit_abund,
             variable_ISRF=args.no_variable_ISRF,
             divide_npoints=args.weight_by_average_unc,
-            start_ISRF=args.start_ISRF
+            start_ISRF=args.start_ISRF,
         )
     for i, comp in enumerate(compnames):
         print(
@@ -505,7 +508,9 @@ def main():
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_MRN77(
+                dustmodel, obsdata, factor_C, factor_sil, ISRF
+            )
             dustmodel.set_size_dist(p0)
 
     elif sizedisttype == "WD01":
@@ -524,7 +529,9 @@ def main():
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_WD01(
+                dustmodel, obsdata, factor_C, factor_sil, ISRF
+            )
             dustmodel.set_size_dist(p0)
 
     elif sizedisttype == "ZDA04":
@@ -543,7 +550,9 @@ def main():
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_ZDA04(
+                dustmodel, obsdata, factor_C, factor_sil, ISRF
+            )
             dustmodel.set_size_dist(p0)
 
     elif sizedisttype == "HD23":
@@ -562,7 +571,9 @@ def main():
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_HD23(
+                dustmodel, obsdata, factor_C, factor_sil, ISRF
+            )
             dustmodel.set_size_dist(p0)
 
     elif sizedisttype == "Y24":
@@ -581,9 +592,7 @@ def main():
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_Y24(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF
-            )
+            p0, _pnames_ = setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
 
     elif sizedisttype == "bins":
@@ -664,11 +673,21 @@ def main():
                 f"Call {call_count['n']}: ln(p) = {-dustmodel.lnprob(*args)}"
             )  # added this line to check when the minimizer converges
             print(f"Number of points: {dustmodel.fracs[5]}")
-            print(f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})")
-            print(f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})")
-            print(f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})")
-            print(f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})")
-            print(f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})")
+            print(
+                f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})"
+            )
+            print(
+                f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})"
+            )
+            print(
+                f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})"
+            )
+            print(
+                f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})"
+            )
+            print(
+                f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})"
+            )
         return -dustmodel.lnprob(*args)
 
     soln = minimize(

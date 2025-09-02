@@ -95,7 +95,13 @@ def main():
     matplotlib.rc("xtick.major", width=2)
     matplotlib.rc("ytick.major", width=2)
 
-    fig, ax = pyplot.subplots( ncols=1, nrows=5, figsize=(10, 15), sharex=True, gridspec_kw={"height_ratios": [3, 1, 1, 1, 1], "hspace": 0}, )
+    fig, ax = pyplot.subplots(
+        ncols=1,
+        nrows=5,
+        figsize=(10, 15),
+        sharex=True,
+        gridspec_kw={"height_ratios": [3, 1, 1, 1, 1], "hspace": 0},
+    )
     ax1 = ax[0]
     colors = ["r", "b", "g", "c"]
     markers = ["^", "o", "x", "v"]
@@ -106,7 +112,7 @@ def main():
     for name in args.filename:
         files.append(name)
     j = 0
-    
+
     for file in files:
         hdulist = fits.open(file)
 
@@ -201,11 +207,18 @@ def main():
                 b = (0.08768592371741601 * wave) + 0.6176183611711199
                 rechte.append(b)
 
-        ax1.plot(data_waves, hdu.data[data_name], colors[j] + ltype, marker=markers[j], label=models[j], markevery=1)
+        ax1.plot(
+            data_waves,
+            hdu.data[data_name],
+            colors[j] + ltype,
+            marker=markers[j],
+            label=models[j],
+            markevery=1,
+        )
 
         residuals = (data - hdu.data[data_name]) / data
         unc = data_unc / data
-        ax[j+1].errorbar(
+        ax[j + 1].errorbar(
             data_waves,
             residuals,
             yerr=unc,
@@ -214,14 +227,14 @@ def main():
             capsize=3,
             label=models[j],
         )
-        ax[j+1].axhline(0, color=colors[j], linestyle="--", linewidth=1)
+        ax[j + 1].axhline(0, color=colors[j], linestyle="--", linewidth=1)
         if args.inverse_lambda:
-            ax[j+1].set_xlabel(r"$1/\lambda \ [1/\mu m]$", fontsize=fontsize)
+            ax[j + 1].set_xlabel(r"$1/\lambda \ [1/\mu m]$", fontsize=fontsize)
         else:
-            ax[j+1].set_xlabel(r"$\lambda \ [\mu m]$", fontsize=fontsize)
-        ax[j+1].set_ylim(-0.75, 0.75)
-        #ax[j+1].legend(loc="lower right")
-        #ax[j+1].annotate(f"{models[j]}", (3000, -0.5), fontsize=20, color="black")
+            ax[j + 1].set_xlabel(r"$\lambda \ [\mu m]$", fontsize=fontsize)
+        ax[j + 1].set_ylim(-0.75, 0.75)
+        # ax[j+1].legend(loc="lower right")
+        # ax[j+1].annotate(f"{models[j]}", (3000, -0.5), fontsize=20, color="black")
 
         j += 1
 
@@ -232,13 +245,7 @@ def main():
 
     ax[3].set_ylabel("Residuals\n (data - model)/data", fontsize=fontsize)
     ax1.errorbar(
-        waves,
-        data,
-        data_unc,
-        fmt="ko",
-        label="Observed",
-        capsize=3,
-        markevery=mark
+        waves, data, data_unc, fmt="ko", label="Observed", capsize=3, markevery=mark
     )
 
     if args.add_fitted_line:
@@ -263,19 +270,19 @@ def main():
 
     for axis in ax:
         axis.tick_params(
-        which="both",      # apply to both major and minor ticks
-        direction="in",    # put ticks inside the axes
-        #top=True,
-        right=True,  # ticks on all sides
-        #labelbottom=True   # show x labels on all axes
-    )
-        
+            which="both",  # apply to both major and minor ticks
+            direction="in",  # put ticks inside the axes
+            # top=True,
+            right=True,  # ticks on all sides
+            # labelbottom=True   # show x labels on all axes
+        )
+
     ax[4].tick_params(
-        which="both",      # apply to both major and minor ticks
-        direction="in",    # put ticks inside the axes
-        #top=True,
+        which="both",  # apply to both major and minor ticks
+        direction="in",  # put ticks inside the axes
+        # top=True,
         right=True,  # ticks on all sides
-        labelbottom=True   # show x labels on all axes
+        labelbottom=True,  # show x labels on all axes
     )
 
     pyplot.tight_layout()

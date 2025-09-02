@@ -151,7 +151,13 @@ def plot_dgfit_abundances(
 
 # plot the extinction curves (total and components)
 def plot_dgfit_extinction(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["EXT"], colors[0] + ltype)
     yrange = get_krange(hdu.data["EXT"], logaxis=True)
@@ -186,7 +192,13 @@ def plot_dgfit_extinction(
 
 # plot the emission spectra (total and components)
 def plot_dgfit_emission(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["EMIS"], colors[0] + ltype)
     yrange = get_krange(hdu.data["EMIS"], logaxis=True)
@@ -209,12 +221,12 @@ def plot_dgfit_emission(
     if obsdata.obs_filenames["ir_emis"] is not None:
         if len(obsdata.ir_emission_av) < 25:
             ax.errorbar(
-            obsdata.ir_emission_waves,
-            obsdata.ir_emission_av,
-            yerr=obsdata.ir_emission_av_unc,
-            fmt="o",
-            label="Observed",
-            color="black"
+                obsdata.ir_emission_waves,
+                obsdata.ir_emission_av,
+                yerr=obsdata.ir_emission_av_unc,
+                fmt="o",
+                label="Observed",
+                color="black",
             )
         else:
             ax.plot(
@@ -237,7 +249,13 @@ def plot_dgfit_emission(
 
 # plot the dust scattering albedo
 def plot_dgfit_albedo(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["ALBEDO"], colors[0] + ltype)
     yrange = get_krange(hdu.data["ALBEDO"])
@@ -276,7 +294,13 @@ def plot_dgfit_albedo(
 
 # plot the dust scattering phase function asymmetry
 def plot_dgfit_g(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c", "y"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["G"], colors[0] + ltype)
     yrange = get_krange(hdu.data["G"])

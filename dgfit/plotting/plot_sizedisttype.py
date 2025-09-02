@@ -98,7 +98,7 @@ def main():
                 every_nth=args.everynth,
             )
         dustmodel_WD = WD01DustModel(dustmodel=dustmodel_WD_full)
-        #avnhi = 5.3e-22
+        # avnhi = 5.3e-22
 
         # set size distributions
         p0 = []
@@ -138,7 +138,7 @@ def main():
                 )
             else:
                 dist = component.size_dist
-            mask = (component.size_dist > 0)
+            mask = component.size_dist > 0
             dist = dist[mask]
             all_sizes = component.sizes[mask]
             ax.plot(
@@ -170,7 +170,7 @@ def main():
                 every_nth=args.everynth,
             )
         dustmodel_Z04 = ZDA04DustModel(dustmodel=dustmodel_Z04_full)
-        #avnhi = 5.34e-22
+        # avnhi = 5.34e-22
 
         # set size distributions
         p0 = []
@@ -248,7 +248,7 @@ def main():
                 )
             else:
                 dist = component.size_dist
-            mask = (component.size_dist > 10)
+            mask = component.size_dist > 10
             dist = dist[mask]
             all_sizes = component.sizes[mask]
             ax.plot(
@@ -272,7 +272,7 @@ def main():
                 every_nth=args.everynth,
             )
         dustmodel_HD23 = HD23DustModel(dustmodel=dustmodel_HD23_full)
-        #avnhi = 3.2e-22
+        # avnhi = 3.2e-22
 
         p0 = []
         for component in dustmodel_HD23.components:
@@ -313,7 +313,7 @@ def main():
                 )
             else:
                 dist = component.size_dist
-            mask = (component.size_dist > 0)
+            mask = component.size_dist > 0
             dist = dist[mask]
             all_sizes = component.sizes[mask]
             ax.plot(
@@ -324,11 +324,7 @@ def main():
                 markersize=7,
             )
 
-    if (
-        "a-C-Y24" in compnames
-        or "a-C:H-Y24" in compnames
-        or "aSil-2-Y24" in compnames
-    ):
+    if "a-C-Y24" in compnames or "a-C:H-Y24" in compnames or "aSil-2-Y24" in compnames:
         Themis_compnames = [
             name
             for name in compnames
@@ -342,7 +338,7 @@ def main():
                 every_nth=args.everynth,
             )
         dustmodel_Themis = Y24DustModel(dustmodel=dustmodel_Themis_full)
-        #avnhi = 5.34e-22
+        # avnhi = 5.34e-22
 
         p0 = []
         for component in dustmodel_Themis.components:
@@ -387,7 +383,7 @@ def main():
                 )
             else:
                 dist = component.size_dist
-            mask = (component.size_dist > 0)
+            mask = component.size_dist > 0
             dist = dist[mask]
             all_sizes = component.sizes[mask]
             ax.plot(
@@ -410,7 +406,7 @@ def main():
             every_nth=args.everynth,
         )
     dustmodel_MRN = MRN77DustModel(dustmodel=dustmodel_MRN_full)
-    #avnhi = 3.782e-22
+    # avnhi = 3.782e-22
 
     p0 = []
     for component in dustmodel_MRN.components:
@@ -454,7 +450,7 @@ def main():
         ax.set_ylabel(r"$dn/da\ A(V)^{-1}$", fontsize=fontsize)
     ax.set_xlim(0.2e-3, 1e1)
     ax.set_xlabel(r"a $[\mu m]$", fontsize=fontsize)
-    #ax.set_title("Size distributions")
+    # ax.set_title("Size distributions")
     ax.legend()
 
     fig.tight_layout()

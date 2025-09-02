@@ -209,18 +209,11 @@ def main():
             colors[i + 1] + ltype,
             label=comps[i],
             marker=markers[i],
-            markevery=mark
+            markevery=mark,
         )
         yrange = get_krange(hdu.data[data_name + str(i + 1)], in_range=yrange)
 
-    ax1.errorbar(
-        waves,
-        data,
-        data_unc,
-        fmt="ko",
-        label="Observed",
-        capsize=3
-    )
+    ax1.errorbar(waves, data, data_unc, fmt="ko", label="Observed", capsize=3)
 
     if args.add_fitted_line:
         ax1.plot(data_waves, rechte, "darkgrey", label="Fit")
