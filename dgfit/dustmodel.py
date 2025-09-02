@@ -8,10 +8,10 @@ from dgfit.dustgrains import DustGrains
 
 __all__ = [
     "DustModel",
-    "MRNDustModel",
-    "WDDustModel",
-    "Z04DustModel",
-    "ThemisDustModel",
+    "MRN77DustModel",
+    "WD01DustModel",
+    "ZDA04DustModel",
+    "Y24DustModel",
     "HD23DustModel",
 ]
 
@@ -65,7 +65,8 @@ class DustModel(object):
         every_nth=5,
         limit_abundances=None,
         variable_ISRF=True,
-        divide_npoints=False
+        divide_npoints=False,
+        start_ISRF=1
     ):
         self.origin = None
         self.n_components = 0
@@ -77,6 +78,7 @@ class DustModel(object):
         self.variable_ISRF = variable_ISRF
         self.fracs = []
         self.divide_npoints = divide_npoints
+        self.start_ISRF = start_ISRF
 
         # populate the grain info
         if componentnames is not None:
@@ -167,7 +169,7 @@ class DustModel(object):
         for component in full_dustmodel.components:
             self.components.append(component)
 
-    def compute_size_dist(self, x, params):
+    def compute_size_dist(self, x, params, composition):
         """
         Compute the size distribution for the input sizes.
         For the bins case, just passes the parameters back.  Allows for
@@ -225,7 +227,7 @@ class DustModel(object):
             delta_val = self.n_params[k]
             k2 = k1 + delta_val
             component.size_dist[:] = self.compute_size_dist(
-                component.sizes[:], params[k1:k2]
+                component.sizes[:], params[k1:k2], component.name
             )
             if self.variable_ISRF:
                 component.RF_strength = params[-1]
@@ -424,12 +426,23 @@ class DustModel(object):
         total_points = obsdata.ext_npts + obsdata.abundance_npts + obsdata.ir_emission_npts + obsdata.scat_a_npts + obsdata.scat_g_npts
 
         if self.divide_npoints:
-            lnp_alav /= obsdata.ext_npts
-            lnp_dep /= obsdata.abundance_npts
-            lnp_emission /= obsdata.ir_emission_npts
-            lnp_albedo /= obsdata.scat_a_npts
-            lnp_g /= obsdata.scat_g_npts
-            total_points = 5
+            tot = 0
+            if obsdata.ext_npts > 0:
+                lnp_alav /= obsdata.ext_npts
+                tot += 1
+            if obsdata.abundance_npts > 0:    
+                lnp_dep /= obsdata.abundance_npts
+                tot += 1
+            if obsdata.ir_emission_npts > 0:    
+                lnp_emission /= obsdata.ir_emission_npts
+                tot += 1
+            if obsdata.scat_a_npts > 0:    
+                lnp_albedo /= obsdata.scat_a_npts
+                tot += 1
+            if obsdata.scat_g_npts:
+                lnp_g /= obsdata.scat_g_npts
+                tot += 1
+            total_points = tot
 
         # combine the lnps
         lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
@@ -772,7 +785,7 @@ class DustModel(object):
 # ================================================================
 
 
-class MRNDustModel(DustModel):
+class MRN77DustModel(DustModel):
     """
     Dust model that uses powerlaw size distributions with min/max
     sizes (MRN).
@@ -782,20 +795,20 @@ class MRNDustModel(DustModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.sizedisttype = "MRN"
+        self.sizedisttype = "MRN77"
         self.n_params = [4] * self.n_components
         self.n_params.append(1)
         for component in self.components:
             self.parameters[component.name] = {
-                "C": 1e-25,
+                "C": 1e-25 / (3.782e-22),
                 "alpha": 3.5,
                 "a_min": 1e-7,
                 "a_max": 1e-3,
             }
         if self.variable_ISRF:
-            self.parameters["Radiation field"] = {"RF": 1}
+            self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
-    def compute_size_dist(self, x, params):
+    def compute_size_dist(self, x, params, composition):
         """
         Compute the size distribution for the input sizes.
         Powerlaw size distribution (aka MRN size distribution)
@@ -915,7 +928,7 @@ class MRNDustModel(DustModel):
 # ================================================================
 
 
-class WDDustModel(DustModel):
+class WD01DustModel(DustModel):
     """
     Dust model that uses the Weingartner & Draine (2001) size distributions.
 
@@ -924,29 +937,29 @@ class WDDustModel(DustModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.sizedisttype = "WD"
+        self.sizedisttype = "WD01"
 
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
             for component in self.components:
-                if component.name == "astro-silicates":
+                if component.name == "astro-silicates-WD01":
                     self.n_params.append(4)
-                    self.parameters["astro-silicates"] = {
-                        "C_s": 1.33e-12,
+                    self.parameters["astro-silicates-WD01"] = {
+                        "C_s": 1.33e-12 / (5.345e-22),
                         "a_ts": 0.171e4,
                         "alpha_s": -1.41,
                         "beta_s": -11.5,
                     }
-                elif component.name == "astro-carbonaceous":
+                elif component.name == "astro-carbonaceous-WD01":
                     self.n_params.append(6)
-                    self.parameters["astro-carbonaceous"] = {
-                        "C_g": 4.15e-11,
+                    self.parameters["astro-carbonaceous-WD01"] = {
+                        "C_g": 4.15e-11 / (5.345e-22),
                         "a_tg": 0.00837e4,
                         "alpha_g": -1.91,
                         "beta_g": -0.125,
                         "a_cg": 0.499e4,
-                        "b_C": 3.0e-5,
+                        "b_C": 3.0e-5 / (5.345e-22),
                     }
                 else:
                     raise ValueError(
@@ -954,9 +967,9 @@ class WDDustModel(DustModel):
                     )
             if self.variable_ISRF:
                 self.n_params.append(1)
-                self.parameters["Radiation field"] = {"RF": 1}
+                self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
-    def compute_size_dist(self, x, params):
+    def compute_size_dist(self, x, params, composition):
         """
         Compute the size distribution for the input sizes.
 
@@ -1033,6 +1046,16 @@ class WDDustModel(DustModel):
 
             sizedist += Da
 
+        if composition == "astro-carbonaceous-WD01":
+            (indxs,) = np.where(np.logical_or(a < 3.5, a > 1e4))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "astro-silicates-WD01":
+            (indxs,) = np.where(np.logical_or(a < 3.5, a > 3e3))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
         return sizedist
 
     def set_size_dist_parameters(self, params):
@@ -1049,15 +1072,15 @@ class WDDustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "astro-silicates":
-                self.parameters["astro-silicates"] = {
+            if component.name == "astro-silicates-WD01":
+                self.parameters["astro-silicates-WD01"] = {
                     "C_s": cparams[0],
                     "a_ts": cparams[1],
                     "alpha_s": cparams[2],
                     "beta_s": cparams[3],
                 }
             else:
-                self.parameters["astro-carbonaceous"] = {
+                self.parameters["astro-carbonaceous-WD01"] = {
                     "C_g": cparams[0],
                     "a_tg": cparams[1],
                     "alpha_g": cparams[2],
@@ -1119,7 +1142,7 @@ class WDDustModel(DustModel):
 # ================================================================
 
 
-class Z04DustModel(DustModel):
+class ZDA04DustModel(DustModel):
     """
     Dust model that uses the Zubko et al. (2004) size distributions.
 
@@ -1128,27 +1151,27 @@ class Z04DustModel(DustModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.sizedisttype = "Z04"
+        self.sizedisttype = "ZDA04"
 
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
             for component in self.components:
-                if component.name == "PAH-Z04":
+                if component.name == "PAH-ZDA04":
                     self.n_params.append(7)
-                    self.parameters["PAH-Z04"] = {
-                        "A": 2.484404e-3,
-                        "c_0": -8.54571,
-                        "b_0": -3.60112,
-                        "b_1": 1.86525e5,
-                        "m_1": -13.5755,
-                        "a_3": 1.98119e-3,
-                        "m_3": 9.25894,
+                    self.parameters["PAH-ZDA04"] = {          #ACH2 model /// Graphite model
+                        "A": 2.484404e-3 / (5.34e-22),      #4.727727e-3 /// 2.484404e-3
+                        "c_0": -8.54571,                    #-8.91244 /// -8.54571
+                        "b_0": -3.60112,                    #-3.72015 /// -3.60112
+                        "b_1": 1.86525e5,                   #6.78215e5 /// 1.86525e5
+                        "m_1": -13.5755,                    #-14.2532 /// -13.5755
+                        "a_3": 1.98119e-3,                  #1.58225e-3 /// 1.98119e-3
+                        "m_3": 9.25894,                     #8.71891 /// 9.25894
                     }
-                elif component.name == "Graphite-Z04":
+                elif component.name == "Graphite-ZDA04":
                     self.n_params.append(12)
-                    self.parameters["Graphite-Z04"] = {
-                        "A": 1.901190e-3,
+                    self.parameters["Graphite-ZDA04"] = {
+                        "A": 1.901190e-3 / (5.34e-22),
                         "c_0": -10.1149,
                         "b_0": -5.3308,
                         "b_1": 7.54276e-2,
@@ -1161,10 +1184,10 @@ class Z04DustModel(DustModel):
                         "a_4": 0.169079,
                         "m_4": 3.636654,
                     }
-                elif component.name == "Silicates-Z04":
+                elif component.name == "Silicates-ZDA04":
                     self.n_params.append(12)
-                    self.parameters["Silicates-Z04"] = {
-                        "A": 1.541199e-3,
+                    self.parameters["Silicates-ZDA04"] = {
+                        "A": 1.541199e-3 / (5.34e-22),
                         "c_0": -8.53081,
                         "b_0": -3.70009,
                         "b_1": 3.96003e-9,
@@ -1177,30 +1200,30 @@ class Z04DustModel(DustModel):
                         "a_4": 0.474035,
                         "m_4": 12.0995,
                     }
-                elif component.name == "ACH2-Z04":
+                elif component.name == "ACH2-ZDA04":
                     self.n_params.append(6)
-                    self.parameters["ACH2-Z04"] = {
-                        "A": 7.862901e-8,
+                    self.parameters["ACH2-ZDA04"] = {
+                        "A": 7.862901e-8 / (5.34e-22),
                         "c_0": -3.92513,
                         "b_0": -3.54913,
                         "b_1": 2.13708e-17,
                         "a_1": 2.03908e-4,
                         "m_1": 34.7835,
                     }
-                elif component.name == "Silicates1-Z04":
+                elif component.name == "Silicates1-ZDA04":
                     self.n_params.append(6)
-                    self.parameters["Silicates1-Z04"] = {
-                        "A": 3.680573e-3,
+                    self.parameters["Silicates1-ZDA04"] = {
+                        "A": 3.680573e-3 / (5.34e-22),
                         "c_0": -8.88283,
                         "b_0": -3.69508,
                         "b_1": 2.17105e-20,
                         "a_1": 3e-7,
                         "m_1": 29.2,
                     }
-                elif component.name == "Silicates2-Z04":
+                elif component.name == "Silicates2-ZDA04":
                     self.n_params.append(9)
-                    self.parameters["Silicates2-Z04"] = {
-                        "A": 6.218762e-9,
+                    self.parameters["Silicates2-ZDA04"] = {
+                        "A": 6.218762e-9 / (5.34e-22),
                         "c_0": 9.04443e3,
                         "b_0": 5.7679e3,
                         "b_1": 5.77024e3,
@@ -1217,9 +1240,9 @@ class Z04DustModel(DustModel):
                     )
             if self.variable_ISRF:
                 self.n_params.append(1)
-                self.parameters["Radiation field"] = {"RF": 1}
+                self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
-    def compute_size_dist(self, x, params):
+    def compute_size_dist(self, x, params, composition):
         """
         Compute the size distribution for the input sizes.
 
@@ -1274,6 +1297,37 @@ class Z04DustModel(DustModel):
         ga = c_0 + term1 - term2 - term3 - term4 - term5
 
         sizedist = A * (np.float64(10) ** np.float64(ga))
+
+        if composition == "ACH2-ZDA04":
+            (indxs,) = np.where(np.logical_or(a < 0.02, a > 0.28))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "PAH-ZDA04":
+            (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 5e-3))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "Silicates-ZDA04":
+            (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 0.34))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "Graphite-ZDA04":
+            (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 0.3))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "Silicates1-ZDA04":
+            (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 0.024))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "Silicates2-ZDA04":
+            (indxs,) = np.where(np.logical_or(a < 0.026, a > 0.37))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
         return sizedist
 
     def set_size_dist_parameters(self, params):
@@ -1290,8 +1344,8 @@ class Z04DustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "PAH-Z04":
-                self.parameters["PAH-Z04"] = {
+            if component.name == "PAH-ZDA04":
+                self.parameters["PAH-ZDA04"] = {
                     "A": cparams[0],
                     "c_0": cparams[1],
                     "b_0": cparams[2],
@@ -1300,8 +1354,8 @@ class Z04DustModel(DustModel):
                     "a_3": cparams[5],
                     "m_3": cparams[6],
                 }
-            elif component.name == "Graphite-Z04":
-                self.parameters["Graphite-Z04"] = {
+            elif component.name == "Graphite-ZDA04":
+                self.parameters["Graphite-ZDA04"] = {
                     "A": cparams[0],
                     "c_0": cparams[1],
                     "b_0": cparams[2],
@@ -1315,8 +1369,8 @@ class Z04DustModel(DustModel):
                     "a_4": cparams[10],
                     "m_4": cparams[11],
                 }
-            elif component.name == "Silicates-Z04":
-                self.parameters["Silicates-Z04"] = {
+            elif component.name == "Silicates-ZDA04":
+                self.parameters["Silicates-ZDA04"] = {
                     "A": cparams[0],
                     "c_0": cparams[1],
                     "b_0": cparams[2],
@@ -1330,8 +1384,8 @@ class Z04DustModel(DustModel):
                     "a_4": cparams[10],
                     "m_4": cparams[11],
                 }
-            elif component.name == "ACH2-Z04":
-                self.parameters["ACH2-Z04"] = {
+            elif component.name == "ACH2-ZDA04":
+                self.parameters["ACH2-ZDA04"] = {
                     "A": cparams[0],
                     "c_0": cparams[1],
                     "b_0": cparams[2],
@@ -1339,8 +1393,8 @@ class Z04DustModel(DustModel):
                     "a_1": cparams[4],
                     "m_1": cparams[5],
                 }
-            elif component.name == "Silicates1-Z04":
-                self.parameters["Silicates1-Z04"] = {
+            elif component.name == "Silicates1-ZDA04":
+                self.parameters["Silicates1-ZDA04"] = {
                     "A": cparams[0],
                     "c_0": cparams[1],
                     "b_0": cparams[2],
@@ -1348,8 +1402,8 @@ class Z04DustModel(DustModel):
                     "a_1": cparams[4],
                     "m_1": cparams[5],
                 }
-            elif component.name == "Silicates2-Z04":
-                self.parameters["Silicates2-Z04"] = {
+            elif component.name == "Silicates2-ZDA04":
+                self.parameters["Silicates2-ZDA04"] = {
                     "A": cparams[0],
                     "c_0": cparams[1],
                     "b_0": cparams[2],
@@ -1428,21 +1482,21 @@ class HD23DustModel(DustModel):
                 if component.name == "Carbonaceous-HD23":
                     self.n_params.append(2)
                     self.parameters["Carbonaceous-HD23"] = {
-                        "B_1": 7.52e-7,
-                        "B_2": 8.09e-10,
+                        "B_1": 7.52e-7 / (3.24e-22),
+                        "B_2": 8.09e-10 / (3.24e-22),
                     }
                 elif component.name == "AstroDust-HD23":
                     self.n_params.append(9)
                     self.parameters["AstroDust-HD23"] = {
-                        "B_ad": 3.31e-10,
-                        "a_0": 63.8,
-                        "sigma_ad": 0.353,
-                        "A_0": 2.97e-5,
-                        "A_1": -3.40,
-                        "A_2": -0.807,
-                        "A_3": 0.157,
-                        "A_4": 7.96e-3,
-                        "A_5": -1.68e-3,
+                        "B_ad": 3.312432756747526242e-10 / (3.24e-22),
+                        "a_0": 63.80845916490116565,
+                        "sigma_ad": 0.3525536658924082190,
+                        "A_0": 2.973514508974622639e-5 / (3.24e-22),
+                        "A_1": -3.401700031709036676,
+                        "A_2": -0.8070693618339355169,
+                        "A_3": 0.1565691274812446021,
+                        "A_4": 7.963246509606041607e-3,
+                        "A_5": -1.680451603515705633e-3,
                     }
                 else:
                     raise ValueError(
@@ -1451,9 +1505,9 @@ class HD23DustModel(DustModel):
                     )
             if self.variable_ISRF:
                 self.n_params.append(1)
-                self.parameters["Radiation field"] = {"RF": 1}
+                self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
-    def compute_size_dist(self, x, params):
+    def compute_size_dist(self, x, params, composition):
         """
         Compute the size distribution for the input sizes.
 
@@ -1498,6 +1552,16 @@ class HD23DustModel(DustModel):
             for i in range(5):
                 exponent += A[i + 1] * (np.power(np.log(a), (i + 1)))
             sizedist += (A[0] / (1e-8 * a)) * np.exp(exponent)
+
+        if composition == "Carbonaceous-HD23":
+            (indxs,) = np.where(np.logical_or(a < 4, a > 1e3))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "AstroDust-HD23":
+            (indxs,) = np.where(np.logical_or(a < 4.5, a > 5e4))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
 
         return sizedist
 
@@ -1592,7 +1656,7 @@ class HD23DustModel(DustModel):
 # ================================================================
 
 
-class ThemisDustModel(DustModel):
+class Y24DustModel(DustModel):
     """
     Dust model that uses the Themis 2.0 (2024) size distributions.
 
@@ -1601,34 +1665,34 @@ class ThemisDustModel(DustModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.sizedisttype = "Themis"
+        self.sizedisttype = "Y24"
 
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
             for component in self.components:
-                if component.name == "a-C-Themis":
+                if component.name == "a-C-Y24":
                     self.n_params.append(5)
-                    self.parameters["a-C-Themis"] = {
-                        "A": 1,
+                    self.parameters["a-C-Y24"] = {
+                        "A": 1.3412712e-18 / (5.34e-22),
                         "alpha": -5,
-                        "a_C": 50,
-                        "a_t": 10,
+                        "a_C": 0.05,
+                        "a_t": 0.01,
                         "gamma": 1,
                     }
-                elif component.name == "a-C:H-Themis":
+                elif component.name == "a-C:H-Y24":
                     self.n_params.append(3)
-                    self.parameters["a-C:H-Themis"] = {
-                        "A": 4e-6,
-                        "a_0": 6.2,
-                        "sigma": 1.32,
+                    self.parameters["a-C:H-Y24"] = {
+                        "A": 3.1841239e-9 / (5.34e-22),
+                        "a_0": 6.195341e-3,
+                        "sigma": 1.315171,
                     }
-                elif component.name == "aSil-2-Themis":
+                elif component.name == "aSil-2-Y24":
                     self.n_params.append(3)
-                    self.parameters["aSil-2-Themis"] = {
-                        "A": 1.27e-2,
-                        "a_0": 0.92,
-                        "sigma": 1.22,
+                    self.parameters["aSil-2-Y24"] = {
+                        "A": 6.9843816e-6 / (5.34e-22),
+                        "a_0": 9.210816e-04,
+                        "sigma": 1.217290,
                     }
                 else:
                     raise ValueError(
@@ -1637,9 +1701,9 @@ class ThemisDustModel(DustModel):
                     )
             if self.variable_ISRF:
                 self.n_params.append(1)
-                self.parameters["Radiation field"] = {"RF": 1}
+                self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
-    def compute_size_dist(self, x, params):
+    def compute_size_dist(self, x, params, composition):
         """
         Compute the size distribution for the input sizes.
 
@@ -1655,8 +1719,8 @@ class ThemisDustModel(DustModel):
         floats
             Size distribution as a function of x
         """
-        # input grain sizes are in cm, needed in nm
-        a = x * 1e7
+        # input grain sizes are in cm, needed in um
+        a = x * 1e4
 
         if len(params) == 5:
             A, alpha, a_C, a_t, gamma = params
@@ -1681,6 +1745,21 @@ class ThemisDustModel(DustModel):
             )
 
             sizedist = np.concatenate((small, large))
+            
+        if composition == "a-C:H-Y24":
+            (indxs,) = np.where(np.logical_or(a < 0.04495579, a > 0.7))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+
+        if composition == "aSil-2-Y24":
+            (indxs,) = np.where(np.logical_or(a < 0.011, a > 0.3737511))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
+        
+        if composition == "a-C-Y24":
+            (indxs,) = np.where(np.logical_or(a < 0.0004, a > 0.025))
+            if len(indxs) > 0:
+                sizedist[indxs] = 0.0
 
         return sizedist
 
@@ -1698,22 +1777,22 @@ class ThemisDustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "a-C-Themis":
-                self.parameters["a-C-Themis"] = {
+            if component.name == "a-C-Y24":
+                self.parameters["a-C-Y24"] = {
                     "A": cparams[0],
                     "alpha": cparams[1],
                     "a_C": cparams[2],
                     "a_t": cparams[3],
                     "gamma": cparams[4],
                 }
-            elif component.name == "a-C:H-Themis":
-                self.parameters["a-C:H-Themis"] = {
+            elif component.name == "a-C:H-Y24":
+                self.parameters["a-C:H-Y24"] = {
                     "A": cparams[0],
                     "a_0": cparams[1],
                     "sigma": cparams[2],
                 }
-            elif component.name == "aSil-2-Themis":
-                self.parameters["aSil-2-Themis"] = {
+            elif component.name == "aSil-2-Y24":
+                self.parameters["aSil-2-Y24"] = {
                     "A": cparams[0],
                     "a_0": cparams[1],
                     "sigma": cparams[2],

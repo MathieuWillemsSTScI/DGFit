@@ -54,39 +54,49 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
 
     fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(15, 10))
 
-    n_atoms = len(OD.abundance)
-    aindxs = np.arange(n_atoms)
-    width = 0.5
-    atomnames = sorted(list(OD.abundance.keys()))
+    if OD.obs_filenames["abund"] is not None:
+        n_atoms = len(OD.abundance)
+        aindxs = np.arange(n_atoms)
+        width = 0.5
+        atomnames = sorted(list(OD.abundance.keys()))
 
     if units == "AV":
-        ax[0, 0].errorbar(
-            OD.ext_waves,
-            OD.ext_alav,
-            yerr=OD.ext_alav_unc,
-            fmt="-",
-            label="Extinction",
-            color="blue",
-        )
-        ax[0, 0].set_ylabel(r"$A(\lambda)/A(V)$")
+        if OD.fit_extinction:
+            ax[0, 0].errorbar(
+                OD.ext_waves,
+                OD.ext_alav,
+                yerr=OD.ext_alav_unc,
+                fmt="-",
+                label="Extinction",
+                color="blue",
+            )
+            ax[0, 0].set_ylabel(r"$A(\lambda)/A(V)$")
+            ax[0, 0].set_xlabel(r"$\lambda [\mu m]$")
+            ax[0, 0].set_yscale("log")
+            ax[0, 0].set_xscale("log")
+            ax[0, 0].legend()
 
-        ax[1, 0].bar(
-            aindxs + 0.75 * width,
-            [OD.total_abundance_av[x][0] for x in atomnames],
-            width,
-            color="black",
-            alpha=0.25,
-            label="gas+dust",
-        )
-        ax[1, 0].errorbar(
-            aindxs + 0.75 * width,
-            [OD.abundance_av[x][0] for x in atomnames],
-            yerr=[OD.abundance_av[x][1] for x in atomnames],
-            fmt="o",
-            label="dust",
-            color="blue",
-        )
-        ax[1, 0].set_ylabel(r"$N(X)/A(V)$", fontsize=fontsize)
+        if OD.fit_abundance:
+            ax[1, 0].bar(
+                aindxs + 0.75 * width,
+                [OD.total_abundance_av[x][0] for x in atomnames],
+                width,
+                color="black",
+                alpha=0.25,
+                label="gas+dust",
+            )
+            ax[1, 0].errorbar(
+                aindxs + 0.75 * width,
+                [OD.abundance_av[x][0] for x in atomnames],
+                yerr=[OD.abundance_av[x][1] for x in atomnames],
+                fmt="o",
+                label="dust",
+                color="blue",
+            )
+            ax[1, 0].set_ylabel(r"$N(X)/A(V)$", fontsize=fontsize)
+            ax[1, 0].set_xticks(aindxs + (0.75 * width))
+            ax[1, 0].set_xticklabels(atomnames)
+            ax[1, 0].legend(loc=2)
 
         if OD.fit_ir_emission:
             ax[0, 1].errorbar(
@@ -105,33 +115,42 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             ax[0, 1].legend(loc=2)
 
     elif units == "NHI":
-        ax[0, 0].errorbar(
-            OD.ext_waves,
-            OD.ext_alnhi,
-            yerr=OD.ext_alnhi_unc,
-            fmt="o",
-            label="Extinction",
-            color="blue",
-        )
-        ax[0, 0].set_ylabel(r"$A(\lambda)/N(HI)$")
+        if OD.fit_extinction:
+            ax[0, 0].errorbar(
+                OD.ext_waves,
+                OD.ext_alnhi,
+                yerr=OD.ext_alnhi_unc,
+                fmt="o",
+                label="Extinction",
+                color="blue",
+            )
+            ax[0, 0].set_ylabel(r"$A(\lambda)/N(HI)$")
+            ax[0, 0].set_xlabel(r"$\lambda [\mu m]$")
+            ax[0, 0].set_yscale("log")
+            ax[0, 0].set_xscale("log")
+            ax[0, 0].legend()
 
-        ax[1, 0].bar(
-            aindxs + 0.75 * width,
-            [OD.total_abundance[x][0] for x in atomnames],
-            width,
-            color="g",
-            alpha=0.25,
-            label="gas+dust",
-        )
-        ax[1, 0].errorbar(
-            aindxs + 0.75 * width,
-            [OD.abundance[x][0] for x in atomnames],
-            yerr=[OD.abundance[x][1] for x in atomnames],
-            fmt="o",
-            label="dust",
-            color="blue",
-        )
-        ax[1, 0].set_ylabel(r"$N(X)/[10^6N(HI)]$", fontsize=fontsize)
+        if OD.fit_abundance:
+            ax[1, 0].bar(
+                aindxs + 0.75 * width,
+                [OD.total_abundance[x][0] for x in atomnames],
+                width,
+                color="g",
+                alpha=0.25,
+                label="gas+dust",
+            )
+            ax[1, 0].errorbar(
+                aindxs + 0.75 * width,
+                [OD.abundance[x][0] for x in atomnames],
+                yerr=[OD.abundance[x][1] for x in atomnames],
+                fmt="o",
+                label="dust",
+                color="blue",
+            )
+            ax[1, 0].set_ylabel(r"$N(X)/[10^6N(HI)]$", fontsize=fontsize)
+            ax[1, 0].set_xticks(aindxs + (0.75 * width))
+            ax[1, 0].set_xticklabels(atomnames)
+            ax[1, 0].legend(loc=2)
 
         if OD.fit_ir_emission:
             ax[0, 1].errorbar(
@@ -148,15 +167,6 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             ax[0, 1].set_xlim(1.0, 1.5e4)
             ax[0, 1].set_yscale("log")
             ax[0, 1].legend(loc=2)
-
-    ax[0, 0].set_xlabel(r"$\lambda [\mu m]$")
-    ax[0, 0].set_yscale("log")
-    ax[0, 0].set_xscale("log")
-    ax[0, 0].legend()
-
-    ax[1, 0].set_xticks(aindxs + (0.75 * width))
-    ax[1, 0].set_xticklabels(atomnames)
-    ax[1, 0].legend(loc=2)
 
     if ISRF != "none":
         ref = importlib_resources.files("dgfit") / ISRF

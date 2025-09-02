@@ -21,22 +21,21 @@ def main():
         "-c",
         "--composition",
         choices=[
-            "astro-silicates",
-            "astro-carbonaceous",
-            "astro-graphite",
-            "PAH-Z04",
-            "Graphite-Z04",
-            "Silicates-Z04",
-            "ACH2-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
+            "astro-silicates-WD01",
+            "astro-carbonaceous-WD01",
+            "PAH-ZDA04",
+            "Graphite-ZDA04",
+            "Silicates-ZDA04",
+            "ACH2-ZDA04",
+            "Silicates1-ZDA04",
+            "Silicates2-ZDA04",
             "Carbonaceous-HD23",
             "AstroDust-HD23",
-            "a-C-Themis",
-            "a-C:H-Themis",
-            "aSil-2-Themis",
+            "a-C-Y24",
+            "a-C:H-Y24",
+            "aSil-2-Y24",
         ],
-        default="astro-silicates",
+        default="astro-silicates-WD01",
         help="Grain composition",
     )
     parser.add_argument(
@@ -57,6 +56,7 @@ def main():
     args = parser.parse_args()
 
     DG = DustGrains()
+    logscale = True
     ref = importlib_resources.files("dgfit") / "data"
     with importlib_resources.as_file(ref) as data_path:
         DG.from_files(
@@ -70,11 +70,12 @@ def main():
         new_DG = DustGrains()
         new_DG.from_object(DG, OD)
         DG = new_DG
+        logscale = False
 
-    plot(DG, args.composition, args.ISRF, args.png, args.eps, args.pdf)
+    plot(DG, args.composition, args.ISRF, logscale, args.png, args.eps, args.pdf)
 
 
-def plot(DG, composition, ISRF, png=False, eps=False, pdf=False):
+def plot(DG, composition, ISRF, logscale, png=False, eps=False, pdf=False):
     # setup the plots
     fontsize = 12
     font = {"size": fontsize}
@@ -126,18 +127,14 @@ def plot(DG, composition, ISRF, png=False, eps=False, pdf=False):
         )
         ax[1, 0].set_xlabel(r"$\lambda$ [$\mu m$]")
         ax[1, 0].set_ylabel("albedo")
-        ax[1, 0].set_xscale("log")
-        ax[1, 0].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
+        if logscale:
+            ax[1, 0].set_xscale("log")
 
         ax[1, 1].plot(DG.wavelengths_scat_g, DG.scat_g[i, :], "o", color=pcolor)
         ax[1, 1].set_xlabel(r"$\lambda$ [$\mu m$]")
         ax[1, 1].set_ylabel("g")
-        ax[1, 1].set_xscale("log")
-        ax[1, 1].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
+        if logscale:
+            ax[1, 1].set_xscale("log")
 
         emission = DG.interpol_emission(ISRF)
 

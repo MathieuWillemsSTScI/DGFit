@@ -55,20 +55,19 @@ class DustGrains(object):
 
         # check that the component name is allowed
         _allowed_components = [
-            "astro-silicates",
-            "astro-carbonaceous",
-            "astro-graphite",
-            "PAH-Z04",
-            "Graphite-Z04",
-            "Silicates-Z04",
-            "ACH2-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
+            "astro-silicates-WD01",
+            "astro-carbonaceous-WD01",
+            "PAH-ZDA04",
+            "Graphite-ZDA04",
+            "Silicates-ZDA04",
+            "ACH2-ZDA04",
+            "Silicates1-ZDA04",
+            "Silicates2-ZDA04",
             "Carbonaceous-HD23",
             "AstroDust-HD23",
-            "a-C-Themis",
-            "a-C:H-Themis",
-            "aSil-2-Themis",
+            "a-C-Y24",
+            "a-C:H-Y24",
+            "aSil-2-Y24",
         ]
         if componentname not in _allowed_components:
             print(componentname + " not one of the allowed grain components")
@@ -77,10 +76,10 @@ class DustGrains(object):
 
         # set useful quantities for each composition
         if componentname in [
-            "astro-silicates",
-            "Silicates-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
+            "astro-silicates-WD01",
+            "Silicates-ZDA04",
+            "Silicates1-ZDA04",
+            "Silicates2-ZDA04",
         ]:  # from WD01
             self.density = 3.5  # g/cm^3
             self.atomic_composition = "MgFeSiO4"
@@ -90,7 +89,7 @@ class DustGrains(object):
                 np.array([24.305, 55.845, 28.0855, 15.994]) * 1.660e-24
             )  # in grams
 
-        elif componentname in ["aSil-2-Themis"]:  # from Demyk et al. 2022
+        elif componentname in ["aSil-2-Y24"]:  # from Demyk et al. 2022
             self.density = 2.7  # g/cm^3
             self.atomic_composition = "MgSiO4"
             self.atomic_comp_names = ["Mg", "Si", "O", "C"]
@@ -99,35 +98,35 @@ class DustGrains(object):
                 np.array([24.305, 28.0855, 15.994, 12.0107]) * 1.660e-24
             )  # in grams
 
-        elif componentname in ["a-C-Themis"]:  # from Themis (2017)
+        elif componentname in ["a-C-Y24"]:  # from Themis (2017)
             self.density = 1.6  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["a-C:H-Themis"]:  # from Themis (2017)
+        elif componentname in ["a-C:H-Y24"]:  # from Themis (2017)
             self.density = 1.3  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["astro-carbonaceous", "PAH-Z04"]:  # from WD01
+        elif componentname in ["astro-carbonaceous-WD01", "PAH-ZDA04"]:  # from WD01
             self.density = 2.24  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["ACH2-Z04"]:  # from Zubko 1996
+        elif componentname in ["ACH2-ZDA04"]:  # from Zubko 1996
             self.density = 1.81  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["astro-graphite", "Graphite-Z04"]:  # need origin (copy)
+        elif componentname in ["Graphite-ZDA04"]:  # need origin (copy)
             self.density = 2.24  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
@@ -457,10 +456,10 @@ class DustGrains(object):
         _natoms = np.empty(len(self.atomic_comp_names))
         for i in range(len(self.atomic_comp_names)):
             if self.name in [
-                "a-C:H-Themis",
-                "aSil-2-Themis",
+                "a-C:H-Y24",
+                "aSil-2-Y24",
             ]:  # correct for the mantles of Themis
-                if self.name == "a-C:H-Themis":
+                if self.name == "a-C:H-Y24":
                     mantle = 5 * 1e-7
                     indices = np.where(self.sizes <= mantle)[0]
                     best_index = indices[np.argmax(self.sizes[indices])] + 1

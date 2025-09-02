@@ -207,12 +207,22 @@ def plot_dgfit_emission(
             )
 
     if obsdata.obs_filenames["ir_emis"] is not None:
-        ax.plot(
+        if len(obsdata.ir_emission_av) < 25:
+            ax.errorbar(
             obsdata.ir_emission_waves,
             obsdata.ir_emission_av,
-            "k-",
+            yerr=obsdata.ir_emission_av_unc,
+            fmt="o",
             label="Observed",
-        )
+            color="black"
+            )
+        else:
+            ax.plot(
+                obsdata.ir_emission_waves,
+                obsdata.ir_emission_av,
+                "k-",
+                label="Observed",
+            )
         yrange_obs = get_krange(obsdata.ir_emission_av, logaxis=True)
 
     ISRF_value = hdu.header["ISRF"]
@@ -231,6 +241,7 @@ def plot_dgfit_albedo(
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["ALBEDO"], colors[0] + ltype)
     yrange = get_krange(hdu.data["ALBEDO"])
+    logscale = True
     if comps:
         # linetypes = ["-", "-", "-", "-", "-"]
         for i in range(len(hdu.data.names) - 2):
@@ -246,6 +257,7 @@ def plot_dgfit_albedo(
             yrange = get_krange(hdu.data["ALBEDO" + str(i + 1)], in_range=yrange)
 
     if obsdata.obs_filenames["scat_a"] is not None:
+        logscale = False
         ax.errorbar(
             obsdata.scat_a_waves,
             obsdata.scat_albedo,
@@ -258,6 +270,8 @@ def plot_dgfit_albedo(
     ax.set_ylabel(r"$albedo$", fontsize=fontsize)
     ax.set_xlim(get_krange(hdu.data["WAVE"], logaxis=True))
     ax.set_ylim([0.0, 1.0])
+    if logscale:
+        ax.set_xscale("log")
 
 
 # plot the dust scattering phase function asymmetry
@@ -266,6 +280,7 @@ def plot_dgfit_g(
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["G"], colors[0] + ltype)
     yrange = get_krange(hdu.data["G"])
+    logscale = True
     if comps:
         # linetypes = ["-", "-", "-", "-", "-"]
         for i in range(len(hdu.data.names) - 2):
@@ -281,6 +296,7 @@ def plot_dgfit_g(
             yrange = get_krange(hdu.data["G" + str(i + 1)], in_range=yrange)
 
     if obsdata.obs_filenames["scat_g"] is not None:
+        logscale = False
         ax.errorbar(
             obsdata.scat_g_waves,
             obsdata.scat_g,
@@ -293,6 +309,8 @@ def plot_dgfit_g(
     ax.set_ylabel(r"$g$", fontsize=fontsize)
     ax.set_xlim(get_krange(hdu.data["WAVE"], logaxis=True))
     ax.set_ylim([0.0, 1.0])
+    if logscale:
+        ax.set_xscale("log")
 
 
 def main():

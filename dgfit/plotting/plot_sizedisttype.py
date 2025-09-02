@@ -5,11 +5,11 @@ import math
 
 from dgfit.dustmodel import (
     DustModel,
-    WDDustModel,
-    Z04DustModel,
-    ThemisDustModel,
+    WD01DustModel,
+    ZDA04DustModel,
+    Y24DustModel,
     HD23DustModel,
-    MRNDustModel,
+    MRN77DustModel,
 )
 
 
@@ -64,33 +64,32 @@ def main():
 
     if args.composition[0] == "Carbon":
         composition = [
-            "astro-carbonaceous",
-            "astro-PAH",
-            "PAH-Z04",
-            "Graphite-Z04",
-            "ACH2-Z04",
+            "astro-carbonaceous-WD01",
+            "PAH-ZDA04",
+            "Graphite-ZDA04",
+            "ACH2-ZDA04",
             "Carbonaceous-HD23",
-            "a-C-Themis",
-            "a-C:H-Themis",
+            "a-C-Y24",
+            "a-C:H-Y24",
         ]
 
     else:
         composition = [
-            "astro-silicates",
-            "Silicates-Z04",
+            "astro-silicates-WD01",
+            "Silicates-ZDA04",
             "AstroDust-HD23",
-            "aSil-2-Themis",
+            "aSil-2-Y24",
         ]
 
     # get the dust model on the full wavelength grid
     compnames = set_grains_for_fitting(composition)
     ref = importlib_resources.files("dgfit") / "data"
 
-    if "astro-silicates" in compnames or "astro-carbonaceous" in compnames:
+    if "astro-silicates-WD01" in compnames or "astro-carbonaceous-WD01" in compnames:
         WD_compnames = [
             name
             for name in compnames
-            if "astro-silicates" in name or "astro-carbonaceous" in name
+            if "astro-silicates-WD01" in name or "astro-carbonaceous-WD01" in name
         ]
         with importlib_resources.as_file(ref) as data_path:
             dustmodel_WD_full = DustModel(
@@ -98,29 +97,29 @@ def main():
                 path=str(data_path) + "/indiv_grain/",
                 every_nth=args.everynth,
             )
-        dustmodel_WD = WDDustModel(dustmodel=dustmodel_WD_full)
-        avnhi = 5.3e-22
+        dustmodel_WD = WD01DustModel(dustmodel=dustmodel_WD_full)
+        #avnhi = 5.3e-22
 
         # set size distributions
         p0 = []
         for component in dustmodel_WD.components:
-            if component.name == "astro-silicates":
-                cparams = dustmodel_WD.parameters["astro-silicates"]
+            if component.name == "astro-silicates-WD01":
+                cparams = dustmodel_WD.parameters["astro-silicates-WD01"]
                 p0 += [
-                    cparams["C_s"] / avnhi,
+                    cparams["C_s"],
                     cparams["a_ts"],
                     cparams["alpha_s"],
                     cparams["beta_s"],
                 ]
             else:
-                cparams = dustmodel_WD.parameters["astro-carbonaceous"]
+                cparams = dustmodel_WD.parameters["astro-carbonaceous-WD01"]
                 p0 += [
-                    cparams["C_g"] / avnhi,
+                    cparams["C_g"],
                     cparams["a_tg"],
                     cparams["alpha_g"],
                     cparams["beta_g"],
                     cparams["a_cg"],
-                    cparams["b_C"] / avnhi,
+                    cparams["b_C"],
                 ]
         cparams = dustmodel_WD.parameters["Radiation field"]
         p0 += [cparams["RF"]]
@@ -139,8 +138,11 @@ def main():
                 )
             else:
                 dist = component.size_dist
+            mask = (component.size_dist > 0)
+            dist = dist[mask]
+            all_sizes = component.sizes[mask]
             ax.plot(
-                component.sizes * 1e4,
+                all_sizes * 1e4,
                 dist,
                 label=component.name,
                 marker=markers[k],
@@ -148,18 +150,18 @@ def main():
             )
 
     if (
-        "PAH-Z04" in compnames
-        or "Graphite-Z04" in compnames
-        or "Silicates-Z04" in compnames
-        or "ACH2-Z04" in compnames
+        "PAH-ZDA04" in compnames
+        or "Graphite-ZDA04" in compnames
+        or "Silicates-ZDA04" in compnames
+        or "ACH2-ZDA04" in compnames
     ):
         Z04_compnames = [
             name
             for name in compnames
-            if "PAH-Z04" in name
-            or "Graphite-Z04" in name
-            or "Silicates-Z04" in name
-            or "ACH2-Z04" in name
+            if "PAH-ZDA04" in name
+            or "Graphite-ZDA04" in name
+            or "Silicates-ZDA04" in name
+            or "ACH2-ZDA04" in name
         ]
         with importlib_resources.as_file(ref) as data_path:
             dustmodel_Z04_full = DustModel(
@@ -167,16 +169,16 @@ def main():
                 path=str(data_path) + "/indiv_grain/",
                 every_nth=args.everynth,
             )
-        dustmodel_Z04 = Z04DustModel(dustmodel=dustmodel_Z04_full)
-        avnhi = 5.34e-22
+        dustmodel_Z04 = ZDA04DustModel(dustmodel=dustmodel_Z04_full)
+        #avnhi = 5.34e-22
 
         # set size distributions
         p0 = []
         for component in dustmodel_Z04.components:
-            if component.name == "PAH-Z04":
-                cparams = dustmodel_Z04.parameters["PAH-Z04"]
+            if component.name == "PAH-ZDA04":
+                cparams = dustmodel_Z04.parameters["PAH-ZDA04"]
                 p0 += [
-                    cparams["A"] / avnhi,
+                    cparams["A"],
                     cparams["c_0"],
                     cparams["b_0"],
                     cparams["b_1"],
@@ -185,27 +187,10 @@ def main():
                     cparams["m_3"],
                 ]
 
-            elif component.name == "Graphite-Z04":
-                cparams = dustmodel_Z04.parameters["Graphite-Z04"]
+            elif component.name == "Graphite-ZDA04":
+                cparams = dustmodel_Z04.parameters["Graphite-ZDA04"]
                 p0 += [
-                    cparams["A"] / avnhi,
-                    cparams["c_0"],
-                    cparams["b_0"],
-                    cparams["b_1"],
-                    cparams["a_1"],
-                    cparams["m_1"],
-                    cparams["b_3"],
-                    cparams["a_3"],
-                    cparams["m_3"],
-                    cparams["b_4"],
-                    cparams["a_4"],
-                    cparams["m_4"],
-                ]
-
-            elif component.name == "Silicates-Z04":
-                cparams = dustmodel_Z04.parameters["Silicates-Z04"]
-                p0 += [
-                    cparams["A"] / avnhi,
+                    cparams["A"],
                     cparams["c_0"],
                     cparams["b_0"],
                     cparams["b_1"],
@@ -219,10 +204,27 @@ def main():
                     cparams["m_4"],
                 ]
 
-            elif component.name == "ACH2-Z04":
-                cparams = dustmodel_Z04.parameters["ACH2-Z04"]
+            elif component.name == "Silicates-ZDA04":
+                cparams = dustmodel_Z04.parameters["Silicates-ZDA04"]
                 p0 += [
-                    cparams["A"] / avnhi,
+                    cparams["A"],
+                    cparams["c_0"],
+                    cparams["b_0"],
+                    cparams["b_1"],
+                    cparams["a_1"],
+                    cparams["m_1"],
+                    cparams["b_3"],
+                    cparams["a_3"],
+                    cparams["m_3"],
+                    cparams["b_4"],
+                    cparams["a_4"],
+                    cparams["m_4"],
+                ]
+
+            elif component.name == "ACH2-ZDA04":
+                cparams = dustmodel_Z04.parameters["ACH2-ZDA04"]
+                p0 += [
+                    cparams["A"],
                     cparams["c_0"],
                     cparams["b_0"],
                     cparams["b_1"],
@@ -246,8 +248,11 @@ def main():
                 )
             else:
                 dist = component.size_dist
+            mask = (component.size_dist > 10)
+            dist = dist[mask]
+            all_sizes = component.sizes[mask]
             ax.plot(
-                component.sizes * 1e4,
+                all_sizes * 1e4,
                 dist,
                 label=component.name,
                 marker=markers[k],
@@ -267,24 +272,24 @@ def main():
                 every_nth=args.everynth,
             )
         dustmodel_HD23 = HD23DustModel(dustmodel=dustmodel_HD23_full)
-        avnhi = 3.2e-22
+        #avnhi = 3.2e-22
 
         p0 = []
         for component in dustmodel_HD23.components:
             if component.name == "Carbonaceous-HD23":
                 cparams = dustmodel_HD23.parameters["Carbonaceous-HD23"]
                 p0 += [
-                    cparams["B_1"] / avnhi,
-                    cparams["B_2"] / avnhi,
+                    cparams["B_1"],
+                    cparams["B_2"],
                 ]
 
             elif component.name == "AstroDust-HD23":
                 cparams = dustmodel_HD23.parameters["AstroDust-HD23"]
                 p0 += [
-                    cparams["B_ad"] / avnhi,
+                    cparams["B_ad"],
                     cparams["a_0"],
                     cparams["sigma_ad"],
-                    cparams["A_0"] / avnhi,
+                    cparams["A_0"],
                     cparams["A_1"],
                     cparams["A_2"],
                     cparams["A_3"],
@@ -308,8 +313,11 @@ def main():
                 )
             else:
                 dist = component.size_dist
+            mask = (component.size_dist > 0)
+            dist = dist[mask]
+            all_sizes = component.sizes[mask]
             ax.plot(
-                component.sizes * 1e4,
+                all_sizes * 1e4,
                 dist,
                 label=component.name,
                 marker=markers[k],
@@ -317,14 +325,14 @@ def main():
             )
 
     if (
-        "a-C-Themis" in compnames
-        or "a-C:H-Themis" in compnames
-        or "aSil-2-Themis" in compnames
+        "a-C-Y24" in compnames
+        or "a-C:H-Y24" in compnames
+        or "aSil-2-Y24" in compnames
     ):
         Themis_compnames = [
             name
             for name in compnames
-            if "a-C-Themis" in name or "a-C:H-Themis" in name or "aSil-2-Themis" in name
+            if "a-C-Y24" in name or "a-C:H-Y24" in name or "aSil-2-Y24" in name
         ]
 
         with importlib_resources.as_file(ref) as data_path:
@@ -333,31 +341,31 @@ def main():
                 path=str(data_path) + "/indiv_grain/",
                 every_nth=args.everynth,
             )
-        dustmodel_Themis = ThemisDustModel(dustmodel=dustmodel_Themis_full)
-        avnhi = 5.34e-22
+        dustmodel_Themis = Y24DustModel(dustmodel=dustmodel_Themis_full)
+        #avnhi = 5.34e-22
 
         p0 = []
         for component in dustmodel_Themis.components:
-            if component.name == "a-C-Themis":
-                cparams = dustmodel_Themis.parameters["a-C-Themis"]
+            if component.name == "a-C-Y24":
+                cparams = dustmodel_Themis.parameters["a-C-Y24"]
                 p0 += [
-                    cparams["A"] / avnhi,
+                    cparams["A"],
                     cparams["alpha"],
                     cparams["a_C"],
                     cparams["a_t"],
                     cparams["gamma"],
                 ]
-            elif component.name == "a-C:H-Themis":
-                cparams = dustmodel_Themis.parameters["a-C:H-Themis"]
+            elif component.name == "a-C:H-Y24":
+                cparams = dustmodel_Themis.parameters["a-C:H-Y24"]
                 p0 += [
-                    cparams["A"] / avnhi,
+                    cparams["A"],
                     cparams["a_0"],
                     cparams["sigma"],
                 ]
-            elif component.name == "aSil-2-Themis":
-                cparams = dustmodel_Themis.parameters["aSil-2-Themis"]
+            elif component.name == "aSil-2-Y24":
+                cparams = dustmodel_Themis.parameters["aSil-2-Y24"]
                 p0 += [
-                    cparams["A"] / avnhi,
+                    cparams["A"],
                     cparams["a_0"],
                     cparams["sigma"],
                 ]
@@ -379,8 +387,11 @@ def main():
                 )
             else:
                 dist = component.size_dist
+            mask = (component.size_dist > 0)
+            dist = dist[mask]
+            all_sizes = component.sizes[mask]
             ax.plot(
-                component.sizes * 1e4,
+                all_sizes * 1e4,
                 dist,
                 label=component.name,
                 marker=markers[k],
@@ -391,21 +402,21 @@ def main():
         density = 2.24
     else:
         density = 3.5
-    MRN_compnames = ["astro-silicates"]
+    MRN_compnames = ["astro-silicates-WD01"]
     with importlib_resources.as_file(ref) as data_path:
         dustmodel_MRN_full = DustModel(
             componentnames=MRN_compnames,
             path=str(data_path) + "/indiv_grain/",
             every_nth=args.everynth,
         )
-    dustmodel_MRN = MRNDustModel(dustmodel=dustmodel_MRN_full)
-    avnhi = 3.782e-22
+    dustmodel_MRN = MRN77DustModel(dustmodel=dustmodel_MRN_full)
+    #avnhi = 3.782e-22
 
     p0 = []
     for component in dustmodel_MRN.components:
         cparams = dustmodel_MRN.parameters[component.name]
         p0 += [
-            cparams["C"] / avnhi,
+            cparams["C"],
             cparams["alpha"],
             cparams["a_min"],
             cparams["a_max"],
@@ -428,13 +439,13 @@ def main():
         else:
             dist = component.size_dist[mask]
 
-        ax.plot(component.sizes[mask] * 1e4, dist, label="MRN", color="black")
+        ax.plot(component.sizes[mask] * 1e4, dist, label="MRN77", color="black")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     if args.mass:
         ax.set_ylim(1e-3, 1e3)
-        ax.set_ylabel(r"$m(a)/A(V)$", fontsize=fontsize)
+        ax.set_ylabel(r"$m(a)/A(V)$ [g/A(V)]", fontsize=fontsize)
     elif args.multa4:
         ax.set_ylim(1e-10, 1e-4)
         ax.set_ylabel(r"$a^4f(a)/A(V)$", fontsize=fontsize)
@@ -443,7 +454,7 @@ def main():
         ax.set_ylabel(r"$dn/da\ A(V)^{-1}$", fontsize=fontsize)
     ax.set_xlim(0.2e-3, 1e1)
     ax.set_xlabel(r"a $[\mu m]$", fontsize=fontsize)
-    ax.set_title("Size distributions")
+    #ax.set_title("Size distributions")
     ax.legend()
 
     fig.tight_layout()

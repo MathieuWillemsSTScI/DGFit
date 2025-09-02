@@ -12,11 +12,11 @@ import corner
 
 from dgfit.dustmodel import (
     DustModel,
-    MRNDustModel,
-    WDDustModel,
-    Z04DustModel,
+    MRN77DustModel,
+    WD01DustModel,
+    ZDA04DustModel,
     HD23DustModel,
-    ThemisDustModel,
+    Y24DustModel,
 )
 from dgfit.obsdata import ObsData
 
@@ -29,8 +29,8 @@ def DGFit_cmdparser():
     )
     parser.add_argument(
         "--sizedisttype",
-        default="WD",
-        choices=["bins", "MRN", "WD", "Z04", "HD23", "Themis"],
+        default="WD01",
+        choices=["bins", "MRN77", "WD01", "ZDA04", "HD23", "Y24"],
         help="Size distribution type",
     )
     parser.add_argument(
@@ -46,21 +46,19 @@ def DGFit_cmdparser():
         nargs="+",
         default=["astro-silicates", "astro-carbonaceous"],
         choices=[
-            "astro-silicates",
-            "astro-carbonaceous",
-            "astro-PAH",
-            "astro-carbonaceous",
-            "PAH-Z04",
-            "Graphite-Z04",
-            "Silicates-Z04",
-            "ACH2-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
+            "astro-silicates-WD01",
+            "astro-carbonaceous-WD01",
+            "PAH-ZDA04",
+            "Graphite-ZDA04",
+            "Silicates-ZDA04",
+            "ACH2-ZDA04",
+            "Silicates1-ZDA04",
+            "Silicates2-ZDA04",
             "Carbonaceous-HD23",
             "AstroDust-HD23",
-            "a-C-Themis",
-            "a-C:H-Themis",
-            "aSil-2-Themis",
+            "a-C-Y24",
+            "a-C:H-Y24",
+            "aSil-2-Y24",
         ],
         help="Which grains to use",
     )
@@ -124,6 +122,9 @@ def DGFit_cmdparser():
     )
     parser.add_argument(
         "--weight_by_average_unc", action="store_true", default=False, help="weight the observations by the average uncertainty, divide by number of points"
+    )
+    parser.add_argument(
+        "--start_ISRF", type=int, default=1, help="Strength of ISRF to start"
     )
 
     return parser
@@ -193,29 +194,29 @@ def calc_sizedist_fact(dustmodel, obsdata):
     return factor_C, factor_sil
 
 
-def setparams_MRN(dustmodel, obsdata, factor_C, factor_sil, ISRF):
+def setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
     for component in dustmodel.components:
         cparams = dustmodel.parameters[component.name]
         if component.name in [
-            "astro-silicates",
-            "Silicates-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
+            "astro-silicates-WD01",
+            "Silicates-ZDA04",
+            "Silicates1-ZDA04",
+            "Silicates2-ZDA04",
             "AstroDust-HD23",
-            "aSil-2-Themis",
+            "aSil-2-Y24",
         ]:
             p0 += [
-                cparams["C"] / (obsdata.avnhi * factor_sil),
+                cparams["C"] / (factor_sil),
                 cparams["alpha"],
                 cparams["a_min"],
                 cparams["a_max"],
             ]
         else:
             p0 += [
-                cparams["C"] / (obsdata.avnhi * factor_C),
+                cparams["C"] / (factor_C),
                 cparams["alpha"],
                 cparams["a_min"],
                 cparams["a_max"],
@@ -230,28 +231,28 @@ def setparams_MRN(dustmodel, obsdata, factor_C, factor_sil, ISRF):
     return p0, pnames
 
 
-def setparams_WD(dustmodel, obsdata, factor_C, factor_sil, ISRF):
+def setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
     for component in dustmodel.components:
-        if component.name == "astro-silicates":
-            cparams = dustmodel.parameters["astro-silicates"]
+        if component.name == "astro-silicates-WD01":
+            cparams = dustmodel.parameters["astro-silicates-WD01"]
             p0 += [
-                cparams["C_s"] / (obsdata.avnhi * factor_sil),
+                cparams["C_s"] / (factor_sil),
                 cparams["a_ts"],
                 cparams["alpha_s"],
                 cparams["beta_s"],
             ]
         else:
-            cparams = dustmodel.parameters["astro-carbonaceous"]
+            cparams = dustmodel.parameters["astro-carbonaceous-WD01"]
             p0 += [
-                cparams["C_g"] / (obsdata.avnhi * factor_C),
+                cparams["C_g"] / (factor_C),
                 cparams["a_tg"],
                 cparams["alpha_g"],
                 cparams["beta_g"],
                 cparams["a_cg"],
-                cparams["b_C"] / (obsdata.avnhi),
+                cparams["b_C"],
             ]
         pnames += cparams.keys()
 
@@ -263,15 +264,15 @@ def setparams_WD(dustmodel, obsdata, factor_C, factor_sil, ISRF):
     return p0, pnames
 
 
-def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
+def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
     for component in dustmodel.components:
-        if component.name == "PAH-Z04":
-            cparams = dustmodel.parameters["PAH-Z04"]
+        if component.name == "PAH-ZDA04":
+            cparams = dustmodel.parameters["PAH-ZDA04"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_C),
+                cparams["A"] / (factor_C),
                 cparams["c_0"],
                 cparams["b_0"],
                 cparams["b_1"],
@@ -280,10 +281,10 @@ def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["m_3"],
             ]
 
-        elif component.name == "Graphite-Z04":
-            cparams = dustmodel.parameters["Graphite-Z04"]
+        elif component.name == "Graphite-ZDA04":
+            cparams = dustmodel.parameters["Graphite-ZDA04"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_C),
+                cparams["A"] / (factor_C),
                 cparams["c_0"],
                 cparams["b_0"],
                 cparams["b_1"],
@@ -297,10 +298,10 @@ def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["m_4"],
             ]
 
-        elif component.name == "Silicates-Z04":
-            cparams = dustmodel.parameters["Silicates-Z04"]
+        elif component.name == "Silicates-ZDA04":
+            cparams = dustmodel.parameters["Silicates-ZDA04"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_sil),
+                cparams["A"] / (factor_sil),
                 cparams["c_0"],
                 cparams["b_0"],
                 cparams["b_1"],
@@ -314,10 +315,10 @@ def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["m_4"],
             ]
 
-        elif component.name == "ACH2-Z04":
-            cparams = dustmodel.parameters["ACH2-Z04"]
+        elif component.name == "ACH2-ZDA04":
+            cparams = dustmodel.parameters["ACH2-ZDA04"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_C),
+                cparams["A"] / (factor_C),
                 cparams["c_0"],
                 cparams["b_0"],
                 cparams["b_1"],
@@ -325,10 +326,10 @@ def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["m_1"],
             ]
 
-        elif component.name == "Silicates1-Z04":
-            cparams = dustmodel.parameters["Silicates1-Z04"]
+        elif component.name == "Silicates1-ZDA04":
+            cparams = dustmodel.parameters["Silicates1-ZDA04"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_sil),
+                cparams["A"] / (factor_sil),
                 cparams["c_0"],
                 cparams["b_0"],
                 cparams["b_1"],
@@ -336,10 +337,10 @@ def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["m_1"],
             ]
 
-        elif component.name == "Silicates2-Z04":
-            cparams = dustmodel.parameters["Silicates2-Z04"]
+        elif component.name == "Silicates2-ZDA04":
+            cparams = dustmodel.parameters["Silicates2-ZDA04"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_sil),
+                cparams["A"] / (factor_sil),
                 cparams["c_0"],
                 cparams["b_0"],
                 cparams["b_1"],
@@ -360,7 +361,7 @@ def setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
     return p0, pnames
 
 
-def setparams_HD(dustmodel, obsdata, factor_C, factor_sil, ISRF):
+def setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
@@ -368,17 +369,17 @@ def setparams_HD(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         if component.name == "Carbonaceous-HD23":
             cparams = dustmodel.parameters["Carbonaceous-HD23"]
             p0 += [
-                cparams["B_1"] / (obsdata.avnhi * factor_C),
-                cparams["B_2"] / (obsdata.avnhi * factor_C),
+                cparams["B_1"] / (factor_C),
+                cparams["B_2"] / (factor_C),
             ]
 
         elif component.name == "AstroDust-HD23":
             cparams = dustmodel.parameters["AstroDust-HD23"]
             p0 += [
-                cparams["B_ad"] / (obsdata.avnhi * factor_sil),
+                cparams["B_ad"] / (factor_sil),
                 cparams["a_0"],
                 cparams["sigma_ad"],
-                cparams["A_0"] / (obsdata.avnhi * factor_sil),
+                cparams["A_0"] / (factor_sil),
                 cparams["A_1"],
                 cparams["A_2"],
                 cparams["A_3"],
@@ -395,31 +396,31 @@ def setparams_HD(dustmodel, obsdata, factor_C, factor_sil, ISRF):
     return p0, pnames
 
 
-def setparams_Themis(dustmodel, obsdata, factor_C, factor_sil, ISRF):
+def setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
     for component in dustmodel.components:
-        if component.name == "a-C-Themis":
-            cparams = dustmodel.parameters["a-C-Themis"]
+        if component.name == "a-C-Y24":
+            cparams = dustmodel.parameters["a-C-Y24"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_C),
+                cparams["A"] / (factor_C),
                 cparams["alpha"],
                 cparams["a_C"],
                 cparams["a_t"],
                 cparams["gamma"],
             ]
-        elif component.name == "a-C:H-Themis":
-            cparams = dustmodel.parameters["a-C:H-Themis"]
+        elif component.name == "a-C:H-Y24":
+            cparams = dustmodel.parameters["a-C:H-Y24"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_C),
+                cparams["A"] / (factor_C),
                 cparams["a_0"],
                 cparams["sigma"],
             ]
-        elif component.name == "aSil-2-Themis":
-            cparams = dustmodel.parameters["aSil-2-Themis"]
+        elif component.name == "aSil-2-Y24":
+            cparams = dustmodel.parameters["aSil-2-Y24"]
             p0 += [
-                cparams["A"] / (obsdata.avnhi * factor_sil),
+                cparams["A"] / (factor_sil),
                 cparams["a_0"],
                 cparams["sigma"],
             ]
@@ -477,6 +478,7 @@ def main():
             limit_abundances=args.limit_abund,
             variable_ISRF=args.no_variable_ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF
         )
     for i, comp in enumerate(compnames):
         print(
@@ -486,59 +488,62 @@ def main():
     sizedisttype = args.sizedisttype
     ISRF = args.no_variable_ISRF
     pnames = []
-    if sizedisttype == "MRN":
+    if sizedisttype == "MRN77":
         # define the fitting model
-        dustmodel = MRNDustModel(
+        dustmodel = MRN77DustModel(
             dustmodel=dustmodel_full,
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_MRN(dustmodel, obsdata, 1, 1, ISRF)
+        p0, _pnames = setparams_MRN77(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_MRN(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
 
-    elif sizedisttype == "WD":
-        dustmodel = WDDustModel(
+    elif sizedisttype == "WD01":
+        dustmodel = WD01DustModel(
             dustmodel=dustmodel_full,
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_WD(dustmodel, obsdata, 1, 1, ISRF)
+        p0, _pnames = setparams_WD01(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_WD(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
 
-    elif sizedisttype == "Z04":
-        dustmodel = Z04DustModel(
+    elif sizedisttype == "ZDA04":
+        dustmodel = ZDA04DustModel(
             dustmodel=dustmodel_full,
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_Z04(dustmodel, obsdata, 1, 1, ISRF)
+        p0, _pnames = setparams_ZDA04(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_Z04(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
 
     elif sizedisttype == "HD23":
@@ -548,33 +553,35 @@ def main():
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_HD(dustmodel, obsdata, 1, 1, ISRF)
+        p0, _pnames = setparams_HD23(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_HD(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, _pnames_ = setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
 
-    elif sizedisttype == "Themis":
-        dustmodel = ThemisDustModel(
+    elif sizedisttype == "Y24":
+        dustmodel = Y24DustModel(
             dustmodel=dustmodel_full,
             obsdata=obsdata,
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_Themis(dustmodel, obsdata, 1, 1, ISRF)
+        p0, _pnames = setparams_Y24(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_Themis(
+            p0, _pnames_ = setparams_Y24(
                 dustmodel, obsdata, factor_C, factor_sil, ISRF
             )
             dustmodel.set_size_dist(p0)
@@ -586,6 +593,7 @@ def main():
             limit_abundances=args.limit_abund,
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
         )
 
         # replace the default size distribution with one from a file
