@@ -31,7 +31,7 @@ def main():
         )
 
     # WD model
-    dustmodel = WDDustModel(dustmodel=dustmodel_full)
+    dustmodel = WD01DustModel(dustmodel=dustmodel_full)
 
     plot(dustmodel, args.png, args.pdf, args.eps)
 

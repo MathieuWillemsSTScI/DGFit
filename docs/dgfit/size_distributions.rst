@@ -54,7 +54,7 @@ and :math:`a_{max} = 2~\mu m` is shown below.
     # default size distribution parameters
     cparams = [1e-25, 3.5, 1e-7, 1e-3]
 
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "astro-silicates-WD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -90,7 +90,7 @@ by multiplying by :math:`a^4`.
     # default size distribution parameters
     cparams = [1e-25, 3.5, 1e-7, 1e-3]
 
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "astro-silicates-WD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -193,7 +193,7 @@ For the carbonaceous grains :math:`C = 4.15\times 10^{-11}`,
 
     # silicate size distribution parameters
     cparams = [1.33e-12, 0.171e4, -1.41, -11.5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "astro-silicates-WD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -201,7 +201,7 @@ For the carbonaceous grains :math:`C = 4.15\times 10^{-11}`,
 
     # carbonaceous size distribution parameters
     cparams = [4.15e-11, 0.00837e4, -1.91, -0.125, 0.499e4, 3.0e-5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "astro-carbonaceous-WD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -239,7 +239,7 @@ by multiplying by :math:`a^4`.
 
     # silicate size distribution parameters
     cparams = [1.33e-12, 0.171e4, -1.41, -11.5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "astro-silicates-WD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -247,7 +247,7 @@ by multiplying by :math:`a^4`.
 
     # carbonaceous size distribution parameters
     cparams = [4.15e-11, 0.00837e4, -1.91, -0.125, 0.499e4, 3.0e-5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "astro-carbonaceous-WD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
