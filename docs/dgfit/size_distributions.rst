@@ -227,7 +227,7 @@ by multiplying by :math:`a^4`.
     import numpy as np
     import matplotlib.pyplot as plt
 
-    from dgfit.dustmodel import WDDustModel
+    from dgfit.dustmodel import WD01DustModel
 
     fig, ax = plt.subplots()
 

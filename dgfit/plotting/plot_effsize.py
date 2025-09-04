@@ -21,7 +21,7 @@ def main():
     args = parser.parse_args()
 
     # get the dust model on the full wavelength grid
-    compnames = ["astro-silicates", "astro-carbonaceous"]
+    compnames = ["astro-silicates-WD01", "astro-carbonaceous-WD01"]
     ref = importlib_resources.files("dgfit") / "data"
     with importlib_resources.as_file(ref) as data_path:
         dustmodel_full = DustModel(
@@ -41,8 +41,8 @@ def plot(dustmodel, png=False, pdf=False, eps=False):
     # set size distributions
     p0 = []
     for component in dustmodel.components:
-        if component.name == "astro-silicates":
-            cparams = dustmodel.parameters["astro-silicates"]
+        if component.name == "astro-silicates-WD01":
+            cparams = dustmodel.parameters["astro-silicates-WD01"]
             p0 += [
                 cparams["C_s"],
                 cparams["a_ts"],
@@ -50,7 +50,7 @@ def plot(dustmodel, png=False, pdf=False, eps=False):
                 cparams["beta_s"],
             ]
         else:
-            cparams = dustmodel.parameters["astro-carbonaceous"]
+            cparams = dustmodel.parameters["astro-carbonaceous-WD01"]
             p0 += [
                 cparams["C_g"],
                 cparams["a_tg"],
