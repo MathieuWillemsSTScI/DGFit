@@ -1,6 +1,6 @@
-from dgfit.dustmodel import MRNDustModel
+from dgfit.dustmodel import MRN77DustModel
 
 
 def test_mrn_initialize():
-    dmod = MRNDustModel()
-    assert dmod.sizedisttype == "MRN"
+    dmod = MRN77DustModel()
+    assert dmod.sizedisttype == "MRN77"
