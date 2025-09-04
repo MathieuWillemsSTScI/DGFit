@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import importlib.resources as importlib_resources
 
-from dgfit.dustmodel import DustModel, WDDustModel
+from dgfit.dustmodel import DustModel, WD01DustModel
 
 
 def main():
