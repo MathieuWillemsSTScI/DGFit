@@ -7,7 +7,6 @@ import numpy as np
 from matplotlib.cm import ScalarMappable
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm
-from matplotlib.ticker import LogLocator
 
 from dgfit.obsdata import ObsData
 from dgfit.dustgrains import DustGrains

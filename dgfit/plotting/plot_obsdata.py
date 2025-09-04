@@ -6,7 +6,6 @@ import importlib.resources as importlib_resources
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.ticker import LogLocator
 
 from astropy.table import Table
 
