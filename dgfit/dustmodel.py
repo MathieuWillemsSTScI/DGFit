@@ -67,7 +67,7 @@ class DustModel(object):
         variable_ISRF=True,
         divide_npoints=False,
         start_ISRF=1,
-        regularization=False
+        regularization=False,
     ):
         self.origin = None
         self.n_components = 0
@@ -80,7 +80,7 @@ class DustModel(object):
         self.fracs = []
         self.divide_npoints = divide_npoints
         self.start_ISRF = start_ISRF
-        self.regularization=regularization
+        self.regularization = regularization
 
         # populate the grain info
         if componentnames is not None:
@@ -504,10 +504,10 @@ class DustModel(object):
                 small = params[0 + delta : n_params - 1 + delta]
                 big = params[1 + delta : n_params + delta]
                 small_sizes = component.sizes[0 : n_params - 1]
-                big_sizes = component.sizes[1 : n_params]
-                nom = -(((big - small)/ big) ** 2)
-                denom = (2 * (((big_sizes - small_sizes) / big_sizes)**2))
-                reg = np.sum(nom/denom)
+                big_sizes = component.sizes[1:n_params]
+                nom = -(((big - small) / big) ** 2)
+                denom = 2 * (((big_sizes - small_sizes) / big_sizes) ** 2)
+                reg = np.sum(nom / denom)
                 lnp_reg += reg
                 delta += n_params
 
@@ -946,7 +946,7 @@ class MRN77DustModel(DustModel):
                 lnp_bound = -np.inf
             if cparams[1] < 0.0:
                 lnp_bound = -np.inf
-        
+
         if not (0.25 <= params[-1] <= 20):
             lnp_bound = -np.inf
 

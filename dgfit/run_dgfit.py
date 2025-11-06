@@ -133,10 +133,10 @@ def DGFit_cmdparser():
         "--start_ISRF", type=int, default=1, help="Strength of ISRF to start"
     )
     parser.add_argument(
-        "--regularization", 
-        action="store_true", 
+        "--regularization",
+        action="store_true",
         default=False,
-        help="add a smoothness criterium to the size distribution"
+        help="add a smoothness criterium to the size distribution",
     )
 
     return parser
@@ -604,7 +604,7 @@ def main():
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
             p0, _pnames_ = setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
-        
+
         # replace the default size distribution with one from a file
         if args.read is not None:
             dustmodel.read_sizedist_from_file(args.read)
@@ -617,15 +617,15 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            regularization=args.regularization
+            regularization=args.regularization,
         )
 
-                    # deweight large grains (test)
-                    # if args.nolarge:
-                    #     (indxs,) = np.where(component.sizes > 5e-4)
-                    #     if len(indxs) > 0:
-                    #         print("deweighting sizes > 5 micron")
-                    #         component.size_dist[indxs] *= 1e-10
+        # deweight large grains (test)
+        # if args.nolarge:
+        #     (indxs,) = np.where(component.sizes > 5e-4)
+        #     if len(indxs) > 0:
+        #         print("deweighting sizes > 5 micron")
+        #         component.size_dist[indxs] *= 1e-10
 
         """
         ndim = 0
@@ -646,7 +646,6 @@ def main():
         dustmodel.set_size_dist(p0)
         """
 
-
         prior = Prior()
         eps = 1e-6
         p0 = []
@@ -660,7 +659,7 @@ def main():
                 atoms_per_grain = col_dens * (sizes**3)
                 n_atoms = obsdata.abundance_av["C"][0] + obsdata.abundance_av["C"][1]
                 n_grains = n_atoms / atoms_per_grain
-                delta = sizes[1:n_sizes] - sizes[0:n_sizes-1]
+                delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
                 delta = np.append(delta, delta[-1])
                 n_grains /= delta / 2
             else:
@@ -670,14 +669,14 @@ def main():
                 atoms_per_grain = col_dens * (sizes**3)
                 n_atoms = obsdata.abundance_av["O"][0] + obsdata.abundance_av["O"][1]
                 n_grains = n_atoms / atoms_per_grain
-                delta = sizes[1:n_sizes] - sizes[0:n_sizes-1]
+                delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
                 delta = np.append(delta, delta[-1])
                 n_grains /= delta
             for kk in range(len(dustmodel.components[k].size_dist)):
                 pnames += [f"c{k + 1}_s{kk}"]
-                p0.append(dustmodel.components[k].size_dist[kk]/1e7)
+                p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 upper = 2 * n_grains[kk]
-                lower = (dustmodel.components[k].size_dist[kk]/1e7) / 100
+                lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 100
                 upper *= 1 + (eps * (k + kk + 1))
                 lower *= 1 - (eps * (k + kk + 1))
                 prior.add_parameter(f"c{k + 1}_s{kk}", dist=loguniform(lower, upper))
@@ -699,17 +698,17 @@ def main():
         exit()
 
     # save the starting model
-    #if sizedisttype != "bins":
+    # if sizedisttype != "bins":
     dustmodel.save_results(basename + "_sizedist_start.fits", obsdata)
 
     # setup time
     setup_time = time.process_time()
     print("setup time taken: ", (setup_time - start_time) / 60.0, " min")
-    
+
     def loglike(a):
         x = np.array(list(a.values()))
         return dustmodel.lnprob(x, obsdata, dustmodel)
-    
+
     # def ptform(u):
     #     x = np.array(u)
     #     for i in range(len(SD_min)):
@@ -717,7 +716,7 @@ def main():
     #     if ISRF:
     #         x[-1] = 0.25 + (19.75*u[-1])
     #     return x
-    
+
     # sampler = NestedSampler(loglike, ptform, ndim)
     # sampler.run_nested()
     # sresults = sampler.results
@@ -727,9 +726,8 @@ def main():
     # dustmodel.set_size_dist(p0)
     # oname = f"{basename}_sizedist_best_optimizer.fits"
     # dustmodel.save_results(oname, obsdata)
-    
 
-    sampler = Sampler(prior, loglike, n_live=2000, filepath='checkpoint.hdf5')
+    sampler = Sampler(prior, loglike, n_live=2000, filepath="checkpoint.hdf5")
     sampler.run(verbose=True)
 
     print(f"Evidence: {sampler.log_z}")
@@ -755,9 +753,6 @@ def main():
     dustmodel.set_size_dist(p0)
     # oname = f"{basename}_sizedist_best_optimizer.fits"
     # dustmodel.save_results(oname, obsdata)
-
-
-
 
     # # do simple optimization to find the best fit
     # def nll(*args):

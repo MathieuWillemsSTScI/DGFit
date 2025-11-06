@@ -227,7 +227,7 @@ def main():
                 color="black",
                 capsize=3,
                 label=models[j],
-                )
+            )
         else:
             ax[j + 1].plot(
                 data_waves,
@@ -237,13 +237,13 @@ def main():
                 label=models[j],
             )
             ax[j + 1].fill_between(
-            waves,
-            residuals - unc,
-            residuals + unc,
-            color="k",
-            alpha=0.3,
-            label="Uncertainty"
-        )
+                waves,
+                residuals - unc,
+                residuals + unc,
+                color="k",
+                alpha=0.3,
+                label="Uncertainty",
+            )
         ax[j + 1].axhline(0, color=colors[j], linestyle="--", linewidth=1)
         if args.inverse_lambda:
             ax[j + 1].set_xlabel(r"$1/\lambda \ [1/\mu m]$", fontsize=fontsize)
@@ -273,7 +273,7 @@ def main():
             data + data_unc,
             color="k",
             alpha=0.3,
-            label="Uncertainty"
+            label="Uncertainty",
         )
 
     if args.add_fitted_line:
@@ -325,4 +325,3 @@ def main():
         fig.savefig(basename + ".eps")
     elif args.pdf:
         fig.savefig(basename + ".pdf")
-
