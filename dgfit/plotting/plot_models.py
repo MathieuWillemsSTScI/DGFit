@@ -218,14 +218,31 @@ def main():
 
         residuals = (data - hdu.data[data_name]) / data
         unc = data_unc / data
-        ax[j + 1].errorbar(
-            data_waves,
-            residuals,
-            yerr=unc,
-            fmt="o",
-            color="black",
-            capsize=3,
-            label=models[j],
+        if args.dustproperty in ["albedo", "g"]:
+            ax[j + 1].errorbar(
+                data_waves,
+                residuals,
+                yerr=unc,
+                fmt="o",
+                color="black",
+                capsize=3,
+                label=models[j],
+                )
+        else:
+            ax[j + 1].plot(
+                data_waves,
+                residuals,
+                "-",
+                color="black",
+                label=models[j],
+            )
+            ax[j + 1].fill_between(
+            waves,
+            residuals - unc,
+            residuals + unc,
+            color="k",
+            alpha=0.3,
+            label="Uncertainty"
         )
         ax[j + 1].axhline(0, color=colors[j], linestyle="--", linewidth=1)
         if args.inverse_lambda:
@@ -237,16 +254,27 @@ def main():
         # ax[j+1].annotate(f"{models[j]}", (3000, -0.5), fontsize=20, color="black")
 
         j += 1
-
-    ax[1].annotate(f"{models[0]}", (0.4, -0.5), fontsize=20, color="black")
-    ax[2].annotate(f"{models[1]}", (0.4, -0.5), fontsize=20, color="black")
-    ax[3].annotate(f"{models[2]}", (0.4, -0.5), fontsize=20, color="black")
-    ax[4].annotate(f"{models[3]}", (0.4, -0.5), fontsize=20, color="black")
+    ax[1].annotate(f"{models[0]}", (0.2, 0.4), fontsize=20, color="black")
+    ax[2].annotate(f"{models[1]}", (0.2, -0.4), fontsize=20, color="black")
+    ax[3].annotate(f"{models[2]}", (0.2, 0.4), fontsize=20, color="black")
+    ax[4].annotate(f"{models[3]}", (0.2, 0.4), fontsize=20, color="black")
 
     ax[3].set_ylabel("Residuals\n (data - model)/data", fontsize=fontsize)
-    ax1.errorbar(
-        waves, data, data_unc, fmt="ko", label="Observed", capsize=3, markevery=mark
-    )
+
+    if args.dustproperty in ["albedo", "g"]:
+        ax1.errorbar(
+            waves, data, data_unc, fmt="ko", label="Observed", capsize=3, markevery=mark
+        )
+    else:
+        ax1.plot(waves, data, "-", label="Observed", color="black", markevery=mark)
+        ax1.fill_between(
+            waves,
+            data - data_unc,
+            data + data_unc,
+            color="k",
+            alpha=0.3,
+            label="Uncertainty"
+        )
 
     if args.add_fitted_line:
         ax1.plot(data_waves, rechte, "darkgrey", label="Fit")
@@ -288,3 +316,13 @@ def main():
     pyplot.tight_layout()
 
     pyplot.show()
+
+    # show or save
+    basename = f"{args.dustproperty}_models"
+    if args.png:
+        fig.savefig(basename + ".png")
+    elif args.eps:
+        fig.savefig(basename + ".eps")
+    elif args.pdf:
+        fig.savefig(basename + ".pdf")
+

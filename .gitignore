@@ -63,3 +63,4 @@ distribute-*.tar.gz
 *.fits
 *.png
 *.h5
+*.hdf5

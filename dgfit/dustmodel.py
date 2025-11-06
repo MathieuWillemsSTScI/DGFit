@@ -67,6 +67,7 @@ class DustModel(object):
         variable_ISRF=True,
         divide_npoints=False,
         start_ISRF=1,
+        regularization=False
     ):
         self.origin = None
         self.n_components = 0
@@ -79,6 +80,7 @@ class DustModel(object):
         self.fracs = []
         self.divide_npoints = divide_npoints
         self.start_ISRF = start_ISRF
+        self.regularization=regularization
 
         # populate the grain info
         if componentnames is not None:
@@ -385,7 +387,7 @@ class DustModel(object):
                             natoms[atomname] - obsdata.abundance_av[atomname][0]
                             > obsdata.abundance_av[atomname][1]
                         ):
-                            lnp_dep += 1e30
+                            lnp_dep += np.inf
                         else:
                             lnp_dep += (
                                 (natoms[atomname] - obsdata.abundance_av[atomname][0])
@@ -489,14 +491,29 @@ class DustModel(object):
         # prior
         #    make sure the size distributions are all positve
         lnp_bound = 0.0
+        lnp_reg = 0.0
+
         for param in params:
             if param < 0.0:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
+
+        if dustmodel.regularization:
+            delta = 0
+            for component in dustmodel.components:
+                n_params = len(component.sizes)
+                small = params[0 + delta : n_params - 1 + delta]
+                big = params[1 + delta : n_params + delta]
+                small_sizes = component.sizes[0 : n_params - 1]
+                big_sizes = component.sizes[1 : n_params]
+                nom = -(((big - small)/ big) ** 2)
+                denom = (2 * (((big_sizes - small_sizes) / big_sizes)**2))
+                reg = np.sum(nom/denom)
+                lnp_reg += reg
+                delta += n_params
 
         # update the size distributions
         dustmodel.set_size_dist(params)
-
-        return dustmodel.lnprob_generic(obsdata) + lnp_bound
+        return dustmodel.lnprob_generic(obsdata) + lnp_bound + lnp_reg
 
     def initial_walkers(self, p0, nwalkers):
         """
@@ -915,20 +932,23 @@ class MRN77DustModel(DustModel):
 
             # check that amin < amax (params 3 & 4)
             if cparams[2] > cparams[3]:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
 
             # check that the amin and amax are within the bounds
             # of the dustmodel
             if cparams[2] < component.sizes[0]:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
             if cparams[3] > component.sizes[-1]:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
 
             # keep the normalization always positive
             if cparams[0] < 0.0:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
             if cparams[1] < 0.0:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
+        
+        if not (0.25 <= params[-1] <= 20):
+            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1092,7 +1112,7 @@ class WD01DustModel(DustModel):
                     "alpha_s": cparams[2],
                     "beta_s": cparams[3],
                 }
-            else:
+            elif component.name == "astro-carbonaceous-WD01":
                 self.parameters["astro-carbonaceous-WD01"] = {
                     "C_g": cparams[0],
                     "a_tg": cparams[1],
@@ -1135,15 +1155,19 @@ class WD01DustModel(DustModel):
             k1 += dustmodel.n_params[k]
 
             # keep the normalization always positive
-            if cparams[0] < 0.0:
-                lnp_bound = -1e20
-            if cparams[1] < 0.0:
-                lnp_bound = -1e20
-            if len(cparams) == 6:
-                if cparams[4] < 0.0:
+            if component.name in ["astro-silicates-WD01", "astro-carbonaceous-WD01"]:
+                if cparams[0] < 0.0:
                     lnp_bound = -1e20
-                if cparams[5] < 0.0:
+                if cparams[1] < 0.0:
                     lnp_bound = -1e20
+                if component.name == "astro-carbonaceous-WD01":
+                    if cparams[4] < 0.0:
+                        lnp_bound = -1e20
+                    if cparams[5] < 0.0:
+                        lnp_bound = -1e20
+
+        if not (0.25 <= params[-1] <= 20):
+            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1462,10 +1486,13 @@ class ZDA04DustModel(DustModel):
 
             # keep the normalization always positive
             if cparams[0] < 0:
-                lnp_bound = -1e20
-            if len(cparams) != 7:
+                lnp_bound = -np.inf
+            if component.name != "PAH-ZDA04":
                 if cparams[4] <= 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
+
+        if not (0.25 <= params[-1] <= 20):
+            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1642,22 +1669,25 @@ class HD23DustModel(DustModel):
             cparams = params[k1:k2]
             k1 += dustmodel.n_params[k]
 
-            if len(cparams) == 2:
+            if component.name == "Carbonaceous-HD23":
                 # keep the normalization always positive
                 if cparams[0] < 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if cparams[1] < 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
 
-            else:
+            elif component.name == "AstroDust-HD23":
                 if cparams[0] < 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if cparams[3] < 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if cparams[2] < 0.25:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if cparams[2] > 0.8:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
+
+        if not (0.25 <= params[-1] <= 20):
+            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1845,17 +1875,20 @@ class Y24DustModel(DustModel):
 
             # keep the normalization always positive
             if cparams[0] < 0.0:
-                lnp_bound = -1e20
+                lnp_bound = -np.inf
 
-            if len(cparams) == 5:
+            if component.name == "a-C-Y24":
                 if cparams[2] <= 0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if cparams[3] <= 0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
 
-            elif len(cparams) == 3:
+            elif component.name in ["aSil-2-Y24", "a-C:H-Y24"]:
                 if cparams[1] <= 0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
+
+        if not (0.25 <= params[-1] <= 20):
+            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound

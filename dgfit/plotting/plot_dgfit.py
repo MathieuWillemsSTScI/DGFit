@@ -47,7 +47,7 @@ def plot_dgfit_sizedist(
     fontsize=12,
     mass=True,
     plegend=True,
-    ltype="-",
+    ltype=["o-", "x-"],
     alpha=1.0,
 ):
     if "DISTPUNC" in hdulist[1].data.names:
@@ -89,7 +89,7 @@ def plot_dgfit_sizedist(
         ax.plot(
             xvals[gindxs],
             yvals[gindxs],
-            colors[i] + ltype,
+            colors[i] + ltype[i],
             label=hdu.header["EXTNAME"],
             alpha=alpha,
         )
@@ -383,7 +383,7 @@ def main():
     OD = ObsData(args.obsfile)
 
     # plot the dust size distributions
-    plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, plegend=True)
+    plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, mass=True, plegend=True)
 
     # plot the abundances
     plot_dgfit_abundances(

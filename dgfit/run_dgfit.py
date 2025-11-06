@@ -9,6 +9,9 @@ from scipy.optimize import minimize
 import emcee
 from multiprocessing import Pool
 import corner
+from nautilus import Prior
+from nautilus import Sampler
+from scipy.stats import loguniform
 
 from dgfit.dustmodel import (
     DustModel,
@@ -118,7 +121,7 @@ def DGFit_cmdparser():
         "-c", "--cpus", metavar=int, default=4, help="number of cpus to use"
     )
     parser.add_argument(
-        "--nolarge", action="store_true", help="Deweight a > 0.5 micron by 1e-10"
+        "--nolarge", action="store_true", help="Deweight a > 5 micron by 1e-10"
     )
     parser.add_argument(
         "--weight_by_average_unc",
@@ -128,6 +131,12 @@ def DGFit_cmdparser():
     )
     parser.add_argument(
         "--start_ISRF", type=int, default=1, help="Strength of ISRF to start"
+    )
+    parser.add_argument(
+        "--regularization", 
+        action="store_true", 
+        default=False,
+        help="add a smoothness criterium to the size distribution"
     )
 
     return parser
@@ -482,6 +491,7 @@ def main():
             variable_ISRF=args.no_variable_ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
+            regularization=args.regularization,
         )
     for i, comp in enumerate(compnames):
         print(
@@ -594,6 +604,10 @@ def main():
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
             p0, _pnames_ = setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF)
             dustmodel.set_size_dist(p0)
+        
+        # replace the default size distribution with one from a file
+        if args.read is not None:
+            dustmodel.read_sizedist_from_file(args.read)
 
     elif sizedisttype == "bins":
         dustmodel = DustModel(
@@ -603,184 +617,269 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
+            regularization=args.regularization
         )
 
-        # replace the default size distribution with one from a file
-        if args.read is not None:
-            dustmodel.read_sizedist_from_file(args.read)
-
-        else:
-            # check that the default size distributions give approximately
-            #     the right level of the A(lambda)/A(V) curve
-            # if not, adjust the overall level of the size distributions to
-            #     get them close
-            results = dustmodel.eff_grain_props(obsdata)
-            cabs = results["cabs"]
-            csca = results["csca"]
-            dust_alav = 1.086 * (cabs + csca)
-            ave_model = np.average(dust_alav)
-            ave_data = np.average(obsdata.ext_alav)
-            ave_ratio = ave_data / ave_model
-            if (ave_ratio < 0.5) | (ave_ratio > 2):
-                for component in dustmodel.components:
-                    component.size_dist *= ave_ratio
-
                     # deweight large grains (test)
-                    if args.nolarge:
-                        (indxs,) = np.where(component.sizes > 10e-4)
-                        if len(indxs) > 0:
-                            print("deweighting sizes > 10 micron")
-                            component.size_dist[indxs] *= 1e-10
+                    # if args.nolarge:
+                    #     (indxs,) = np.where(component.sizes > 5e-4)
+                    #     if len(indxs) > 0:
+                    #         print("deweighting sizes > 5 micron")
+                    #         component.size_dist[indxs] *= 1e-10
 
-            if args.limit_abund:
-                factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-                for component in dustmodel.components:
-                    if component.atomic_composition == "C":
-                        component.size_dist /= factor_C
-                    else:
-                        component.size_dist /= factor_sil
-
-        # initial guesses at parameters
+        """
+        ndim = 0
         p0 = []
+        SD_max = []
+        SD_min = []
         for k in range(0, dustmodel.n_components):
-            p0 = np.concatenate([p0, dustmodel.components[k].size_dist])
-            pnames += [
-                f"c{k + 1}_s{kk}"
-                for kk in range(len(dustmodel.components[k].size_dist))
-            ]
+            for kk in range(len(dustmodel.components[k].size_dist)):
+                pnames += [f"c{k + 1}_s{kk}"]
+                p0.append(dustmodel.components[k].size_dist[kk]/1e7)
+                SD_max.append((dustmodel.components[k].size_dist[kk]/1e7) * 2)
+                SD_min.append((dustmodel.components[k].size_dist[kk]/1e7) / 10)
+                ndim += 1
         if ISRF:
-            p0 = np.concatenate([p0, np.array([1])])
             pnames += ["RF"]
+            p0.append(1)
+            ndim += 1
+        dustmodel.set_size_dist(p0)
+        """
+
+
+        prior = Prior()
+        eps = 1e-6
+        p0 = []
+        a = []
+        for k in range(0, dustmodel.n_components):
+            print(dustmodel.components[k].name)
+            if dustmodel.components[k].name == "astro-carbonaceous-WD01":
+                sizes = dustmodel.components[k].sizes
+                n_sizes = len(sizes)
+                col_dens = dustmodel.components[k].col_den_constant
+                atoms_per_grain = col_dens * (sizes**3)
+                n_atoms = obsdata.abundance_av["C"][0] + obsdata.abundance_av["C"][1]
+                n_grains = n_atoms / atoms_per_grain
+                delta = sizes[1:n_sizes] - sizes[0:n_sizes-1]
+                delta = np.append(delta, delta[-1])
+                n_grains /= delta / 2
+            else:
+                sizes = dustmodel.components[k].sizes
+                n_sizes = len(sizes)
+                col_dens = dustmodel.components[k].col_den_constant[3]
+                atoms_per_grain = col_dens * (sizes**3)
+                n_atoms = obsdata.abundance_av["O"][0] + obsdata.abundance_av["O"][1]
+                n_grains = n_atoms / atoms_per_grain
+                delta = sizes[1:n_sizes] - sizes[0:n_sizes-1]
+                delta = np.append(delta, delta[-1])
+                n_grains /= delta
+            for kk in range(len(dustmodel.components[k].size_dist)):
+                pnames += [f"c{k + 1}_s{kk}"]
+                p0.append(dustmodel.components[k].size_dist[kk]/1e7)
+                upper = 2 * n_grains[kk]
+                lower = (dustmodel.components[k].size_dist[kk]/1e7) / 100
+                upper *= 1 + (eps * (k + kk + 1))
+                lower *= 1 - (eps * (k + kk + 1))
+                prior.add_parameter(f"c{k + 1}_s{kk}", dist=loguniform(lower, upper))
+                diff = ((n_grains[kk]) - upper) / (upper)
+                a.append(diff)
+        print(a)
+        for i in range(len(p0)):
+            if i != 26:
+                p0[i] = 0
+
+        if ISRF:
+            pnames += ["RF"]
+            p0.append(1)
+            prior.add_parameter("RF", dist=(0.25, 20))
+        dustmodel.set_size_dist(p0)
 
     else:
         print("Size distribution choice not known")
         exit()
 
     # save the starting model
+    #if sizedisttype != "bins":
     dustmodel.save_results(basename + "_sizedist_start.fits", obsdata)
 
     # setup time
     setup_time = time.process_time()
     print("setup time taken: ", (setup_time - start_time) / 60.0, " min")
+    
+    def loglike(a):
+        x = np.array(list(a.values()))
+        return dustmodel.lnprob(x, obsdata, dustmodel)
+    
+    # def ptform(u):
+    #     x = np.array(u)
+    #     for i in range(len(SD_min)):
+    #         x[i] = SD_min[i] * ((SD_max[i] / SD_min[i])**u[i])
+    #     if ISRF:
+    #         x[-1] = 0.25 + (19.75*u[-1])
+    #     return x
+    
+    # sampler = NestedSampler(loglike, ptform, ndim)
+    # sampler.run_nested()
+    # sresults = sampler.results
 
-    call_count = {"n": 0}
+    # mapindex = np.argmax(sresults.logwt)
+    # p0 = sresults.samples[mapindex]
+    # dustmodel.set_size_dist(p0)
+    # oname = f"{basename}_sizedist_best_optimizer.fits"
+    # dustmodel.save_results(oname, obsdata)
+    
 
-    # do simple optimization to find the best fit
-    def nll(*args):
-        call_count["n"] += 1
-        if call_count["n"] % 500 == 0:
-            print(
-                f"Call {call_count['n']}: ln(p) = {-dustmodel.lnprob(*args)}"
-            )  # added this line to check when the minimizer converges
-            print(f"Number of points: {dustmodel.fracs[5]}")
-            print(
-                f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})"
-            )
-            print(
-                f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})"
-            )
-            print(
-                f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})"
-            )
-            print(
-                f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})"
-            )
-            print(
-                f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})"
-            )
-        return -dustmodel.lnprob(*args)
+    sampler = Sampler(prior, loglike, n_live=2000, filepath='checkpoint.hdf5')
+    sampler.run(verbose=True)
 
-    soln = minimize(
-        nll,
-        p0,
-        args=(obsdata, dustmodel),
-        method="Nelder-Mead",
-        options={"maxiter": 10000, "maxfev": 10000, "disp": True},
-    )
-    opt_params = soln.x
-    dustmodel.set_size_dist_parameters(opt_params)
+    print(f"Evidence: {sampler.log_z}")
 
-    oname = f"{basename}_sizedist_best_optimizer.fits"
-    # TODO: add saving of the size distribution parameters for the analytic forms
-    dustmodel.save_results(oname, obsdata)
+    points, log_w, log_l = sampler.posterior()
+    # fig = corner.corner(
+    #     points, weights=np.exp(log_w), bins=100, labels=prior.keys, color='purple',
+    #     plot_datapoints=False, range=np.repeat(0.999, len(prior.keys)))
+    # plt.show()
 
-    opt_time = time.process_time()
-    print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
+    map_index = np.argmax(log_w)
+    p0 = points[map_index]
 
-    if args.mcmc:
-        p0 = opt_params
-        # more emcee setup
-        ndim = len(p0)
-        nwalkers = 2 * ndim
+    p0[1] = 0
+    p0[2] = 0
+    p0[5] = 0
+    p0[6] = 0
+    p0[8] = 0
+    p0[9] = 0
+    p0[10] = 0
+    p0[16] = 0
+    p0[17] = 0
+    dustmodel.set_size_dist(p0)
+    # oname = f"{basename}_sizedist_best_optimizer.fits"
+    # dustmodel.save_results(oname, obsdata)
 
-        print(f"fitting {fitobs_list}")
-        print(f"# params = {ndim}")
-        print(f"# walkers = {nwalkers}")
-        print(f"# burnfrac = {burnfrac}")
-        print(f"# steps = {nsteps}")
 
-        # setting up the walkers to start "near" the inital guess
-        p = dustmodel.initial_walkers(p0, nwalkers)
 
-        # Set up the backend to save the samples for the emcee runs
-        emcee_samples_file = f"{basename}_chain.h5"
-        backend = emcee.backends.HDFBackend(emcee_samples_file)
-        backend.reset(nwalkers, ndim)
 
-        # setup the sampler
-        with Pool() as pool:
-            sampler = emcee.EnsembleSampler(
-                nwalkers,
-                ndim,
-                dustmodel.lnprob,
-                args=(obsdata, dustmodel),
-                pool=pool,
-                backend=backend,
-            )
+    # # do simple optimization to find the best fit
+    # def nll(*args):
+    #     call_count["n"] += 1
+    #     if call_count["n"] % 1000 == 0:
+    #         print(
+    #             f"Call {call_count['n']}: ln(p) = {-dustmodel.lnprob(*args)}"
+    #         )  # added this line to check when the minimizer converges
+    #         print(f"Number of points: {dustmodel.fracs[5]}")
+    #         print(
+    #             f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})"
+    #         )
+    #         print(
+    #             f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})"
+    #         )
+    #         print(
+    #             f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})"
+    #         )
+    #         print(
+    #             f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})"
+    #         )
+    #         print(
+    #             f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})"
+    #         )
+    #         comps = dustmodel.components
+    #         grain = comps[0]
+    #         print(
+    #             f"ISRF: {grain.RF_strength}"
+    #         )
+    #     return -dustmodel.lnprob(*args)
 
-            # do the sampling
-            sampler.run_mcmc(p, nsteps, progress=True)
+    # soln = minimize(
+    #     nll,
+    #     p0,
+    #     args=(obsdata, dustmodel),
+    #     method="Nelder-Mead",
+    #     options={"maxiter": 500000, "maxfev": 500000, "disp": True},
+    # )
+    # opt_params = soln.x
+    # dustmodel.set_size_dist_parameters(opt_params)
 
-        emcee_time = time.process_time()
-        print("emcee time taken: ", (emcee_time - opt_time) / 60.0, " min")
+    # oname = f"{basename}_sizedist_best_optimizer.fits"
+    # # TODO: add saving of the size distribution parameters for the analytic forms
+    # dustmodel.save_results(oname, obsdata)
 
-        # best fit dust params
-        oname = "%s_sizedist_best_fin.fits" % (basename)
-        dustmodel.save_best_results(oname, sampler, obsdata)
+    # opt_time = time.process_time()
+    # print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
 
-        # 50p dust params
-        oname = "%s_sizedist_fin.fits" % (basename)
-        dustmodel.save_50percentile_results(
-            oname, sampler, obsdata, nburn=int(burnfrac * nsteps)
-        )
+    # if args.mcmc:
+    #     p0 = opt_params
+    #     # more emcee setup
+    #     ndim = len(p0)
+    #     nwalkers = 2 * ndim
 
-        if ndim < 30:
+    #     print(f"fitting {fitobs_list}")
+    #     print(f"# params = {ndim}")
+    #     print(f"# walkers = {nwalkers}")
+    #     print(f"# burnfrac = {burnfrac}")
+    #     print(f"# steps = {nsteps}")
 
-            # plot the walker chains for all parameters
-            nwalkers, nsteps, ndim = sampler.chain.shape
-            fig, ax = plt.subplots(ndim, sharex=True, figsize=(13, 13))
-            walk_val = np.arange(nsteps)
-            for i in range(ndim):
-                for k in range(nwalkers):
-                    ax[i].plot(walk_val, sampler.chain[k, :, i], "-")
-                    ax[i].set_ylabel(pnames[i])
-            fig.savefig(f"{basename}_walker_param_values.png")
-            plt.close(fig)
+    #     # setting up the walkers to start "near" the inital guess
+    #     p = dustmodel.initial_walkers(p0, nwalkers)
 
-            # plot the 1D and 2D likelihood functions in a traditional triangle plot
-            nwalkers, nsteps = sampler.lnprobability.shape
-            # discard the 1st burn_frac (burn in)
-            flat_samples = sampler.get_chain(discard=int(burnfrac * nsteps), flat=True)
-            nflatsteps, ndim = flat_samples.shape
-            fig = corner.corner(
-                flat_samples,
-                labels=pnames,
-                show_titles=True,
-                title_fmt=".3f",
-                use_math_text=True,
-            )
-            fig.savefig(f"{basename}_param_triangle.png")
-            plt.close(fig)
+    #     # Set up the backend to save the samples for the emcee runs
+    #     emcee_samples_file = f"{basename}_chain.h5"
+    #     backend = emcee.backends.HDFBackend(emcee_samples_file)
+    #     backend.reset(nwalkers, ndim)
+
+    #     # setup the sampler
+    #     with Pool() as pool:
+    #         sampler = emcee.EnsembleSampler(
+    #             nwalkers,
+    #             ndim,
+    #             dustmodel.lnprob,
+    #             args=(obsdata, dustmodel),
+    #             pool=pool,
+    #             backend=backend,
+    #         )
+
+    #         # do the sampling
+    #         sampler.run_mcmc(p, nsteps, progress=True)
+
+    #     emcee_time = time.process_time()
+    #     print("emcee time taken: ", (emcee_time - opt_time) / 60.0, " min")
+
+    #     # best fit dust params
+    #     oname = "%s_sizedist_best_fin.fits" % (basename)
+    #     dustmodel.save_best_results(oname, sampler, obsdata)
+
+    #     # 50p dust params
+    #     oname = "%s_sizedist_fin.fits" % (basename)
+    #     dustmodel.save_50percentile_results(
+    #         oname, sampler, obsdata, nburn=int(burnfrac * nsteps)
+    #     )
+
+    #     if ndim < 30:
+
+    #         # plot the walker chains for all parameters
+    #         nwalkers, nsteps, ndim = sampler.chain.shape
+    #         fig, ax = plt.subplots(ndim, sharex=True, figsize=(13, 13))
+    #         walk_val = np.arange(nsteps)
+    #         for i in range(ndim):
+    #             for k in range(nwalkers):
+    #                 ax[i].plot(walk_val, sampler.chain[k, :, i], "-")
+    #                 ax[i].set_ylabel(pnames[i])
+    #         fig.savefig(f"{basename}_walker_param_values.png")
+    #         plt.close(fig)
+
+    #         # plot the 1D and 2D likelihood functions in a traditional triangle plot
+    #         nwalkers, nsteps = sampler.lnprobability.shape
+    #         # discard the 1st burn_frac (burn in)
+    #         flat_samples = sampler.get_chain(discard=int(burnfrac * nsteps), flat=True)
+    #         nflatsteps, ndim = flat_samples.shape
+    #         fig = corner.corner(
+    #             flat_samples,
+    #             labels=pnames,
+    #             show_titles=True,
+    #             title_fmt=".3f",
+    #             use_math_text=True,
+    #         )
+    #         fig.savefig(f"{basename}_param_triangle.png")
+    #         plt.close(fig)
 
 
 if __name__ == "__main__":
