@@ -115,14 +115,12 @@ def DGFit_cmdparser():
         "-r", "--read", default=None, help="Read size distribution from disk"
     )
     parser.add_argument(
-        "-t", "--tag", default="dgfit_test", help="basename to use for output files"
+        "-t", "--tag", default="GrainBow_test", help="basename to use for output files"
     )
     parser.add_argument(
         "-c", "--cpus", metavar=int, default=4, help="number of cpus to use"
     )
-    parser.add_argument(
-        "--nolarge", action="store_true", help="Deweight a > 5 micron by 1e-10"
-    )
+    parser.add_argument("--nolarge", action="store_true", help="Deweight a > 5 micron")
     parser.add_argument(
         "--weight_by_average_unc",
         action="store_true",
@@ -137,6 +135,18 @@ def DGFit_cmdparser():
         action="store_true",
         default=False,
         help="add a smoothness criterium to the size distribution",
+    )
+    parser.add_argument(
+        "--fitting_package",
+        default="nautilus",
+        choices=["nautilus", "emcee"],
+        help="Fitting package to use",
+    )
+    parser.add_argument(
+        "--cornerplot",
+        action="store_true",
+        default=False,
+        help="Generate a corner plot of the posterior distributions",
     )
 
     return parser
@@ -210,8 +220,12 @@ def setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
+    deltas = []
+    logs = []
     for component in dustmodel.components:
         cparams = dustmodel.parameters[component.name]
+        cdeltas = dustmodel.deltas[component.name]
+        clogs = dustmodel.logs[component.name]
         if component.name in [
             "astro-silicates-WD01",
             "Silicates-ZDA04",
@@ -222,17 +236,33 @@ def setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         ]:
             p0 += [
                 cparams["C"] / (factor_sil),
-                cparams["alpha"],
-                cparams["a_min"],
-                cparams["a_max"],
+            ]
+            deltas += [
+                np.array(cdeltas["C"]) / (factor_sil),
             ]
         else:
             p0 += [
                 cparams["C"] / (factor_C),
-                cparams["alpha"],
-                cparams["a_min"],
-                cparams["a_max"],
             ]
+            deltas += [
+                np.array(cdeltas["C"]) / (factor_C),
+            ]
+        p0 += [
+            cparams["alpha"],
+            cparams["a_min"],
+            cparams["a_max"],
+        ]
+        deltas += [
+            cdeltas["alpha"],
+            cdeltas["a_min"],
+            cdeltas["a_max"],
+        ]
+        logs += [
+            clogs["C"],
+            clogs["alpha"],
+            clogs["a_min"],
+            clogs["a_max"],
+        ]
         pnames += cparams.keys()
 
     if ISRF:
@@ -240,24 +270,42 @@ def setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         p0 += [cparams["RF"]]
         pnames += cparams.keys()
 
-    return p0, pnames
+    return p0, deltas, logs, pnames
 
 
 def setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
+    deltas = []
+    logs = []
     for component in dustmodel.components:
         if component.name == "astro-silicates-WD01":
             cparams = dustmodel.parameters["astro-silicates-WD01"]
+            cdeltas = dustmodel.deltas["astro-silicates-WD01"]
+            clogs = dustmodel.logs["astro-silicates-WD01"]
             p0 += [
                 cparams["C_s"] / (factor_sil),
                 cparams["a_ts"],
                 cparams["alpha_s"],
                 cparams["beta_s"],
             ]
+            deltas += [
+                np.array(cdeltas["C_s"]) / (factor_sil),
+                cdeltas["a_ts"],
+                cdeltas["alpha_s"],
+                cdeltas["beta_s"],
+            ]
+            logs += [
+                clogs["C_s"],
+                clogs["a_ts"],
+                clogs["alpha_s"],
+                clogs["beta_s"],
+            ]
         else:
             cparams = dustmodel.parameters["astro-carbonaceous-WD01"]
+            cdeltas = dustmodel.deltas["astro-carbonaceous-WD01"]
+            clogs = dustmodel.logs["astro-carbonaceous-WD01"]
             p0 += [
                 cparams["C_g"] / (factor_C),
                 cparams["a_tg"],
@@ -266,6 +314,22 @@ def setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["a_cg"],
                 cparams["b_C"],
             ]
+            deltas += [
+                np.array(cdeltas["C_g"]) / (factor_C),
+                cdeltas["a_tg"],
+                cdeltas["alpha_g"],
+                cdeltas["beta_g"],
+                cdeltas["a_cg"],
+                cdeltas["b_C"],
+            ]
+            logs += [
+                clogs["C_g"],
+                clogs["a_tg"],
+                clogs["alpha_g"],
+                clogs["beta_g"],
+                clogs["a_cg"],
+                clogs["b_C"],
+            ]
         pnames += cparams.keys()
 
     if ISRF:
@@ -273,16 +337,20 @@ def setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         p0 += [cparams["RF"]]
         pnames += cparams.keys()
 
-    return p0, pnames
+    return p0, deltas, logs, pnames
 
 
 def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
+    deltas = []
+    logs = []
     for component in dustmodel.components:
         if component.name == "PAH-ZDA04":
             cparams = dustmodel.parameters["PAH-ZDA04"]
+            cdeltas = dustmodel.deltas["PAH-ZDA04"]
+            clogs = dustmodel.logs["PAH-ZDA04"]
             p0 += [
                 cparams["A"] / (factor_C),
                 cparams["c_0"],
@@ -291,10 +359,30 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["m_1"],
                 cparams["a_3"],
                 cparams["m_3"],
+            ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_C),
+                cdeltas["c_0"],
+                cdeltas["b_0"],
+                cdeltas["b_1"],
+                cdeltas["m_1"],
+                cdeltas["a_3"],
+                cdeltas["m_3"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["c_0"],
+                clogs["b_0"],
+                clogs["b_1"],
+                clogs["m_1"],
+                clogs["a_3"],
+                clogs["m_3"],
             ]
 
         elif component.name == "Graphite-ZDA04":
             cparams = dustmodel.parameters["Graphite-ZDA04"]
+            cdeltas = dustmodel.deltas["Graphite-ZDA04"]
+            clogs = dustmodel.logs["Graphite-ZDA04"]
             p0 += [
                 cparams["A"] / (factor_C),
                 cparams["c_0"],
@@ -308,10 +396,40 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["b_4"],
                 cparams["a_4"],
                 cparams["m_4"],
+            ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_C),
+                cdeltas["c_0"],
+                cdeltas["b_0"],
+                cdeltas["b_1"],
+                cdeltas["a_1"],
+                cdeltas["m_1"],
+                cdeltas["b_3"],
+                cdeltas["a_3"],
+                cdeltas["m_3"],
+                cdeltas["b_4"],
+                cdeltas["a_4"],
+                cdeltas["m_4"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["c_0"],
+                clogs["b_0"],
+                clogs["b_1"],
+                clogs["a_1"],
+                clogs["m_1"],
+                clogs["b_3"],
+                clogs["a_3"],
+                clogs["m_3"],
+                clogs["b_4"],
+                clogs["a_4"],
+                clogs["m_4"],
             ]
 
         elif component.name == "Silicates-ZDA04":
             cparams = dustmodel.parameters["Silicates-ZDA04"]
+            cdeltas = dustmodel.deltas["Silicates-ZDA04"]
+            clogs = dustmodel.logs["Silicates-ZDA04"]
             p0 += [
                 cparams["A"] / (factor_sil),
                 cparams["c_0"],
@@ -326,9 +444,39 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["a_4"],
                 cparams["m_4"],
             ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_sil),
+                cdeltas["c_0"],
+                cdeltas["b_0"],
+                cdeltas["b_1"],
+                cdeltas["a_1"],
+                cdeltas["m_1"],
+                cdeltas["b_3"],
+                cdeltas["a_3"],
+                cdeltas["m_3"],
+                cdeltas["b_4"],
+                cdeltas["a_4"],
+                cdeltas["m_4"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["c_0"],
+                clogs["b_0"],
+                clogs["b_1"],
+                clogs["a_1"],
+                clogs["m_1"],
+                clogs["b_3"],
+                clogs["a_3"],
+                clogs["m_3"],
+                clogs["b_4"],
+                clogs["a_4"],
+                clogs["m_4"],
+            ]
 
         elif component.name == "ACH2-ZDA04":
             cparams = dustmodel.parameters["ACH2-ZDA04"]
+            cdeltas = dustmodel.deltas["ACH2-ZDA04"]
+            clogs = dustmodel.logs["ACH2-ZDA04"]
             p0 += [
                 cparams["A"] / (factor_C),
                 cparams["c_0"],
@@ -337,9 +485,27 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["a_1"],
                 cparams["m_1"],
             ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_C),
+                cdeltas["c_0"],
+                cdeltas["b_0"],
+                cdeltas["b_1"],
+                cdeltas["a_1"],
+                cdeltas["m_1"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["c_0"],
+                clogs["b_0"],
+                clogs["b_1"],
+                clogs["a_1"],
+                clogs["m_1"],
+            ]
 
         elif component.name == "Silicates1-ZDA04":
             cparams = dustmodel.parameters["Silicates1-ZDA04"]
+            cdeltas = dustmodel.deltas["Silicates1-ZDA04"]
+            clogs = dustmodel.logs["Silicates1-ZDA04"]
             p0 += [
                 cparams["A"] / (factor_sil),
                 cparams["c_0"],
@@ -348,9 +514,27 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["a_1"],
                 cparams["m_1"],
             ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_sil),
+                cdeltas["c_0"],
+                cdeltas["b_0"],
+                cdeltas["b_1"],
+                cdeltas["a_1"],
+                cdeltas["m_1"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["c_0"],
+                clogs["b_0"],
+                clogs["b_1"],
+                clogs["a_1"],
+                clogs["m_1"],
+            ]
 
         elif component.name == "Silicates2-ZDA04":
             cparams = dustmodel.parameters["Silicates2-ZDA04"]
+            cdeltas = dustmodel.deltas["Silicates2-ZDA04"]
+            clogs = dustmodel.logs["Silicates2-ZDA04"]
             p0 += [
                 cparams["A"] / (factor_sil),
                 cparams["c_0"],
@@ -362,6 +546,28 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["a_2"],
                 cparams["m_2"],
             ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_sil),
+                cdeltas["c_0"],
+                cdeltas["b_0"],
+                cdeltas["b_1"],
+                cdeltas["a_1"],
+                cdeltas["m_1"],
+                cdeltas["b_2"],
+                cdeltas["a_2"],
+                cdeltas["m_2"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["c_0"],
+                clogs["b_0"],
+                clogs["b_1"],
+                clogs["a_1"],
+                clogs["m_1"],
+                clogs["b_2"],
+                clogs["a_2"],
+                clogs["m_2"],
+            ]
 
         pnames += cparams.keys()
 
@@ -370,23 +576,36 @@ def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         p0 += [cparams["RF"]]
         pnames += cparams.keys()
 
-    return p0, pnames
+    return p0, deltas, logs, pnames
 
 
 def setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
+    deltas = []
+    logs = []
     for component in dustmodel.components:
         if component.name == "Carbonaceous-HD23":
             cparams = dustmodel.parameters["Carbonaceous-HD23"]
+            cdeltas = dustmodel.deltas["Carbonaceous-HD23"]
+            clogs = dustmodel.logs["Carbonaceous-HD23"]
             p0 += [
                 cparams["B_1"] / (factor_C),
                 cparams["B_2"] / (factor_C),
             ]
-
+            deltas += [
+                np.array(cdeltas["B_1"]) / (factor_C),
+                np.array(cdeltas["B_2"]) / (factor_C),
+            ]
+            logs += [
+                clogs["B_1"],
+                clogs["B_2"],
+            ]
         elif component.name == "AstroDust-HD23":
             cparams = dustmodel.parameters["AstroDust-HD23"]
+            cdeltas = dustmodel.deltas["AstroDust-HD23"]
+            clogs = dustmodel.logs["AstroDust-HD23"]
             p0 += [
                 cparams["B_ad"] / (factor_sil),
                 cparams["a_0"],
@@ -398,6 +617,28 @@ def setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["A_4"],
                 cparams["A_5"],
             ]
+            deltas += [
+                np.array(cdeltas["B_ad"]) / (factor_sil),
+                cdeltas["a_0"],
+                cdeltas["sigma_ad"],
+                np.array(cdeltas["A_0"]) / (factor_sil),
+                cdeltas["A_1"],
+                cdeltas["A_2"],
+                cdeltas["A_3"],
+                cdeltas["A_4"],
+                cdeltas["A_5"],
+            ]
+            logs += [
+                clogs["B_ad"],
+                clogs["a_0"],
+                clogs["sigma_ad"],
+                clogs["A_0"],
+                clogs["A_1"],
+                clogs["A_2"],
+                clogs["A_3"],
+                clogs["A_4"],
+                clogs["A_5"],
+            ]
         pnames += cparams.keys()
 
     if ISRF:
@@ -405,16 +646,20 @@ def setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         p0 += [cparams["RF"]]
         pnames += cparams.keys()
 
-    return p0, pnames
+    return p0, deltas, logs, pnames
 
 
 def setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF):
 
     pnames = []
     p0 = []
+    deltas = []
+    logs = []
     for component in dustmodel.components:
         if component.name == "a-C-Y24":
             cparams = dustmodel.parameters["a-C-Y24"]
+            cdeltas = dustmodel.deltas["a-C-Y24"]
+            clogs = dustmodel.logs["a-C-Y24"]
             p0 += [
                 cparams["A"] / (factor_C),
                 cparams["alpha"],
@@ -422,19 +667,57 @@ def setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF):
                 cparams["a_t"],
                 cparams["gamma"],
             ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_C),
+                cdeltas["alpha"],
+                cdeltas["a_C"],
+                cdeltas["a_t"],
+                cdeltas["gamma"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["alpha"],
+                clogs["a_C"],
+                clogs["a_t"],
+                clogs["gamma"],
+            ]
         elif component.name == "a-C:H-Y24":
             cparams = dustmodel.parameters["a-C:H-Y24"]
+            cdeltas = dustmodel.deltas["a-C:H-Y24"]
+            clogs = dustmodel.logs["a-C:H-Y24"]
             p0 += [
                 cparams["A"] / (factor_C),
                 cparams["a_0"],
                 cparams["sigma"],
             ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_C),
+                cdeltas["a_0"],
+                cdeltas["sigma"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["a_0"],
+                clogs["sigma"],
+            ]
         elif component.name == "aSil-2-Y24":
             cparams = dustmodel.parameters["aSil-2-Y24"]
+            cdeltas = dustmodel.deltas["aSil-2-Y24"]
+            clogs = dustmodel.logs["aSil-2-Y24"]
             p0 += [
                 cparams["A"] / (factor_sil),
                 cparams["a_0"],
                 cparams["sigma"],
+            ]
+            deltas += [
+                np.array(cdeltas["A"]) / (factor_sil),
+                cdeltas["a_0"],
+                cdeltas["sigma"],
+            ]
+            logs += [
+                clogs["A"],
+                clogs["a_0"],
+                clogs["sigma"],
             ]
         pnames += cparams.keys()
 
@@ -443,7 +726,7 @@ def setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF):
         p0 += [cparams["RF"]]
         pnames += cparams.keys()
 
-    return p0, pnames
+    return p0, deltas, logs, pnames
 
 
 def main():
@@ -474,7 +757,6 @@ def main():
     ref = importlib_resources.files("dgfit") / "data"
 
     # get the observed data
-    # path = f"{data_path}/mw_rv31"
     obsdata = ObsData(args.obsfile)
 
     # determine what to fit based on what exists and the commandline args
@@ -498,6 +780,7 @@ def main():
             f"# of grain sizes for {comp} = {len(dustmodel_full.components[i].sizes)}"
         )
 
+    prior = Prior()
     sizedisttype = args.sizedisttype
     ISRF = args.no_variable_ISRF
     pnames = []
@@ -512,16 +795,32 @@ def main():
             start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_MRN77(dustmodel, obsdata, 1, 1, ISRF)
+        p0, deltas, logs, _pnames = setparams_MRN77(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_MRN77(
+            p0, deltas, logs, _pnames_ = setparams_MRN77(
                 dustmodel, obsdata, factor_C, factor_sil, ISRF
             )
             dustmodel.set_size_dist(p0)
+
+        if args.sampling_package == "nautilus":
+            for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i] == True:
+                        prior.add_parameter(
+                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}", dist=(deltas[i][0], deltas[i][1])
+                        )
+
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
 
     elif sizedisttype == "WD01":
         dustmodel = WD01DustModel(
@@ -533,16 +832,31 @@ def main():
             start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_WD01(dustmodel, obsdata, 1, 1, ISRF)
+        p0, deltas, logs, _pnames = setparams_WD01(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_WD01(
+            p0, deltas, logs, _pnames_ = setparams_WD01(
                 dustmodel, obsdata, factor_C, factor_sil, ISRF
             )
             dustmodel.set_size_dist(p0)
+
+        if args.sampling_package == "nautilus":
+            for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i] == True:
+                        prior.add_parameter(
+                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}", dist=(deltas[i][0], deltas[i][1])
+                        )
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
 
     elif sizedisttype == "ZDA04":
         dustmodel = ZDA04DustModel(
@@ -554,16 +868,32 @@ def main():
             start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_ZDA04(dustmodel, obsdata, 1, 1, ISRF)
+        p0, deltas, logs, _pnames = setparams_ZDA04(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_ZDA04(
+            p0, deltas, logs, _pnames_ = setparams_ZDA04(
                 dustmodel, obsdata, factor_C, factor_sil, ISRF
             )
             dustmodel.set_size_dist(p0)
+
+        if args.sampling_package == "nautilus":
+            for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i] == True:
+                        prior.add_parameter(
+                            f"{name}_c{i}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}_c{i}", dist=(deltas[i][0], deltas[i][1])
+                        )
+
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
 
     elif sizedisttype == "HD23":
         dustmodel = HD23DustModel(
@@ -575,16 +905,32 @@ def main():
             start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_HD23(dustmodel, obsdata, 1, 1, ISRF)
+        p0, deltas, logs, _pnames = setparams_HD23(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_HD23(
+            p0, deltas, logs, _pnames_ = setparams_HD23(
                 dustmodel, obsdata, factor_C, factor_sil, ISRF
             )
             dustmodel.set_size_dist(p0)
+
+        if args.sampling_package == "nautilus":
+            for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i] == True:
+                        prior.add_parameter(
+                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}", dist=(deltas[i][0], deltas[i][1])
+                        )
+
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
 
     elif sizedisttype == "Y24":
         dustmodel = Y24DustModel(
@@ -596,20 +942,41 @@ def main():
             start_ISRF=args.start_ISRF,
         )
 
-        p0, _pnames = setparams_Y24(dustmodel, obsdata, 1, 1, ISRF)
+        p0, deltas, logs, _pnames = setparams_Y24(dustmodel, obsdata, 1, 1, ISRF)
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, _pnames_ = setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF)
+            p0, deltas, logs, _pnames_ = setparams_Y24(
+                dustmodel, obsdata, factor_C, factor_sil, ISRF
+            )
             dustmodel.set_size_dist(p0)
 
-        # replace the default size distribution with one from a file
-        if args.read is not None:
-            dustmodel.read_sizedist_from_file(args.read)
+        if args.sampling_package == "nautilus":
+            for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i] == True:
+                        prior.add_parameter(
+                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}", dist=(deltas[i][0], deltas[i][1])
+                        )
+
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
+
+    # replace the default size distribution with one from a file
+    elif args.read is not None:
+        dustmodel.read_sizedist_from_file(args.read)
 
     elif sizedisttype == "bins":
+        if args.sampling_package != "nautilus":
+            print("Only the nautilus sampling package is supported for bins")
+            exit()
         dustmodel = DustModel(
             dustmodel=dustmodel_full,
             obsdata=obsdata,
@@ -620,39 +987,19 @@ def main():
             regularization=args.regularization,
         )
 
-        # deweight large grains (test)
-        # if args.nolarge:
-        #     (indxs,) = np.where(component.sizes > 5e-4)
-        #     if len(indxs) > 0:
-        #         print("deweighting sizes > 5 micron")
-        #         component.size_dist[indxs] *= 1e-10
-
-        """
-        ndim = 0
-        p0 = []
-        SD_max = []
-        SD_min = []
-        for k in range(0, dustmodel.n_components):
-            for kk in range(len(dustmodel.components[k].size_dist)):
-                pnames += [f"c{k + 1}_s{kk}"]
-                p0.append(dustmodel.components[k].size_dist[kk]/1e7)
-                SD_max.append((dustmodel.components[k].size_dist[kk]/1e7) * 2)
-                SD_min.append((dustmodel.components[k].size_dist[kk]/1e7) / 10)
-                ndim += 1
-        if ISRF:
-            pnames += ["RF"]
-            p0.append(1)
-            ndim += 1
-        dustmodel.set_size_dist(p0)
-        """
-
-        prior = Prior()
         eps = 1e-6
         p0 = []
-        a = []
         for k in range(0, dustmodel.n_components):
             print(dustmodel.components[k].name)
-            if dustmodel.components[k].name == "astro-carbonaceous-WD01":
+            if dustmodel.components[k].name in [
+                "astro-carbonaceous-WD01",
+                "PAH-ZDA04",
+                "Graphite-ZDA04",
+                "ACH2-ZDA04",
+                "Carbonaceous-HD23",
+                "a-C-Y24",
+                "a-C:H-Y24",
+            ]:
                 sizes = dustmodel.components[k].sizes
                 n_sizes = len(sizes)
                 col_dens = dustmodel.components[k].col_den_constant
@@ -662,6 +1009,7 @@ def main():
                 delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
                 delta = np.append(delta, delta[-1])
                 n_grains /= delta / 2
+
             else:
                 sizes = dustmodel.components[k].sizes
                 n_sizes = len(sizes)
@@ -671,8 +1019,13 @@ def main():
                 n_grains = n_atoms / atoms_per_grain
                 delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
                 delta = np.append(delta, delta[-1])
-                n_grains /= delta
+                n_grains /= delta / 2
+
             for kk in range(len(dustmodel.components[k].size_dist)):
+                if args.nolarge:
+                    if dustmodel.components[k].sizes[kk] > 5e-4:
+                        print("Deweighting size ", dustmodel.components[k].sizes[kk])
+                        continue
                 pnames += [f"c{k + 1}_s{kk}"]
                 p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 upper = 2 * n_grains[kk]
@@ -680,12 +1033,6 @@ def main():
                 upper *= 1 + (eps * (k + kk + 1))
                 lower *= 1 - (eps * (k + kk + 1))
                 prior.add_parameter(f"c{k + 1}_s{kk}", dist=loguniform(lower, upper))
-                diff = ((n_grains[kk]) - upper) / (upper)
-                a.append(diff)
-        print(a)
-        for i in range(len(p0)):
-            if i != 26:
-                p0[i] = 0
 
         if ISRF:
             pnames += ["RF"]
@@ -698,183 +1045,168 @@ def main():
         exit()
 
     # save the starting model
-    # if sizedisttype != "bins":
     dustmodel.save_results(basename + "_sizedist_start.fits", obsdata)
 
     # setup time
     setup_time = time.process_time()
     print("setup time taken: ", (setup_time - start_time) / 60.0, " min")
 
-    def loglike(a):
-        x = np.array(list(a.values()))
-        return dustmodel.lnprob(x, obsdata, dustmodel)
+    if args.sampling_package == "nautilus":
 
-    # def ptform(u):
-    #     x = np.array(u)
-    #     for i in range(len(SD_min)):
-    #         x[i] = SD_min[i] * ((SD_max[i] / SD_min[i])**u[i])
-    #     if ISRF:
-    #         x[-1] = 0.25 + (19.75*u[-1])
-    #     return x
+        def loglike(a):
+            x = np.array(list(a.values()))
+            return dustmodel.lnprob(x, obsdata, dustmodel)
 
-    # sampler = NestedSampler(loglike, ptform, ndim)
-    # sampler.run_nested()
-    # sresults = sampler.results
+        sampler = Sampler(
+            prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}.hdf5"
+        )
+        sampler.run(verbose=True)
+        opt_time = time.process_time()
+        print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
+        print(f"Evidence: {sampler.log_z}")
 
-    # mapindex = np.argmax(sresults.logwt)
-    # p0 = sresults.samples[mapindex]
-    # dustmodel.set_size_dist(p0)
-    # oname = f"{basename}_sizedist_best_optimizer.fits"
-    # dustmodel.save_results(oname, obsdata)
+        points, log_w, log_l = sampler.posterior()
+        map_index = np.argmax(log_w)
+        opt_params = points[map_index]
+        if args.corner:
+            fig = corner.corner(
+                points,
+                weights=np.exp(log_w),
+                bins=100,
+                labels=prior.keys,
+                color="purple",
+                show_titles=True,
+                title_fmt=".2f",
+                plot_datapoints=False,
+                range=np.repeat(0.999, len(prior.keys)),
+            )
+            plt.show()
+            fig.savefig(f"{basename}_corner_plot.png")
+            plt.close(fig)
 
-    sampler = Sampler(prior, loglike, n_live=2000, filepath="checkpoint.hdf5")
-    sampler.run(verbose=True)
+        dustmodel.set_size_dist(opt_params)
+        print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")
+        oname = f"{basename}_sizedist_best_optimizer.fits"
+        dustmodel.save_results(oname, obsdata)
 
-    print(f"Evidence: {sampler.log_z}")
+    if args.sampling_package == "emcee":
+        # do simple optimization to find the best fit
+        call_count = {"n": 0}
 
-    points, log_w, log_l = sampler.posterior()
-    # fig = corner.corner(
-    #     points, weights=np.exp(log_w), bins=100, labels=prior.keys, color='purple',
-    #     plot_datapoints=False, range=np.repeat(0.999, len(prior.keys)))
-    # plt.show()
+        def nll(*args):
+            call_count["n"] += 1
+            if call_count["n"] % 1000 == 0:
+                print(
+                    f"Call {call_count['n']}: ln(p) = {-dustmodel.lnprob(*args)}"
+                )  # added this line to check when the minimizer converges
+                print(f"Number of points: {dustmodel.fracs[5]}")
+                print(
+                    f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})"
+                )
+                print(
+                    f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})"
+                )
+                print(
+                    f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})"
+                )
+                print(
+                    f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})"
+                )
+                print(
+                    f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})"
+                )
+                comps = dustmodel.components
+                grain = comps[0]
+                print(f"ISRF: {grain.RF_strength}")
+            return -dustmodel.lnprob(*args)
 
-    map_index = np.argmax(log_w)
-    p0 = points[map_index]
+        soln = minimize(
+            nll,
+            p0,
+            args=(obsdata, dustmodel),
+            method="Nelder-Mead",
+            options={"maxiter": 500000, "maxfev": 500000, "disp": True},
+        )
+        opt_params = soln.x
+        dustmodel.set_size_dist_parameters(opt_params)
+        opt_time = time.process_time()
+        print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
 
-    p0[1] = 0
-    p0[2] = 0
-    p0[5] = 0
-    p0[6] = 0
-    p0[8] = 0
-    p0[9] = 0
-    p0[10] = 0
-    p0[16] = 0
-    p0[17] = 0
-    dustmodel.set_size_dist(p0)
-    # oname = f"{basename}_sizedist_best_optimizer.fits"
-    # dustmodel.save_results(oname, obsdata)
+        if args.mcmc:
+            p0 = opt_params
+            # more emcee setup
+            ndim = len(p0)
+            nwalkers = 2 * ndim
 
-    # # do simple optimization to find the best fit
-    # def nll(*args):
-    #     call_count["n"] += 1
-    #     if call_count["n"] % 1000 == 0:
-    #         print(
-    #             f"Call {call_count['n']}: ln(p) = {-dustmodel.lnprob(*args)}"
-    #         )  # added this line to check when the minimizer converges
-    #         print(f"Number of points: {dustmodel.fracs[5]}")
-    #         print(
-    #             f"Extinction: {round(np.abs(dustmodel.fracs[0]) * 100, 2)}% ({obsdata.ext_npts})"
-    #         )
-    #         print(
-    #             f"Emission: {round(np.abs(dustmodel.fracs[2]) * 100, 2)}% ({obsdata.ir_emission_npts})"
-    #         )
-    #         print(
-    #             f"Abundance: {round(np.abs(dustmodel.fracs[1]) * 100, 2)}% ({obsdata.abundance_npts})"
-    #         )
-    #         print(
-    #             f"Albedo: {round(np.abs(dustmodel.fracs[3]) * 100, 2)}% ({obsdata.scat_a_npts})"
-    #         )
-    #         print(
-    #             f"g: {round(np.abs(dustmodel.fracs[4]) * 100, 2)}% ({obsdata.scat_g_npts})"
-    #         )
-    #         comps = dustmodel.components
-    #         grain = comps[0]
-    #         print(
-    #             f"ISRF: {grain.RF_strength}"
-    #         )
-    #     return -dustmodel.lnprob(*args)
+            print(f"fitting {fitobs_list}")
+            print(f"# params = {ndim}")
+            print(f"# walkers = {nwalkers}")
+            print(f"# burnfrac = {burnfrac}")
+            print(f"# steps = {nsteps}")
 
-    # soln = minimize(
-    #     nll,
-    #     p0,
-    #     args=(obsdata, dustmodel),
-    #     method="Nelder-Mead",
-    #     options={"maxiter": 500000, "maxfev": 500000, "disp": True},
-    # )
-    # opt_params = soln.x
-    # dustmodel.set_size_dist_parameters(opt_params)
+            # setting up the walkers to start "near" the inital guess
+            p = dustmodel.initial_walkers(p0, nwalkers)
 
-    # oname = f"{basename}_sizedist_best_optimizer.fits"
-    # # TODO: add saving of the size distribution parameters for the analytic forms
-    # dustmodel.save_results(oname, obsdata)
+            # Set up the backend to save the samples for the emcee runs
+            emcee_samples_file = f"{basename}_chain.h5"
+            backend = emcee.backends.HDFBackend(emcee_samples_file)
+            backend.reset(nwalkers, ndim)
 
-    # opt_time = time.process_time()
-    # print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
+            # setup the sampler
+            with Pool() as pool:
+                sampler = emcee.EnsembleSampler(
+                    nwalkers,
+                    ndim,
+                    dustmodel.lnprob,
+                    args=(obsdata, dustmodel),
+                    pool=pool,
+                    backend=backend,
+                )
 
-    # if args.mcmc:
-    #     p0 = opt_params
-    #     # more emcee setup
-    #     ndim = len(p0)
-    #     nwalkers = 2 * ndim
+                # do the sampling
+                sampler.run_mcmc(p, nsteps, progress=True)
 
-    #     print(f"fitting {fitobs_list}")
-    #     print(f"# params = {ndim}")
-    #     print(f"# walkers = {nwalkers}")
-    #     print(f"# burnfrac = {burnfrac}")
-    #     print(f"# steps = {nsteps}")
+            emcee_time = time.process_time()
+            print("emcee time taken: ", (emcee_time - opt_time) / 60.0, " min")
 
-    #     # setting up the walkers to start "near" the inital guess
-    #     p = dustmodel.initial_walkers(p0, nwalkers)
+            # best fit dust params
+            oname = "%s_sizedist_best_fin.fits" % (basename)
+            dustmodel.save_best_results(oname, sampler, obsdata)
 
-    #     # Set up the backend to save the samples for the emcee runs
-    #     emcee_samples_file = f"{basename}_chain.h5"
-    #     backend = emcee.backends.HDFBackend(emcee_samples_file)
-    #     backend.reset(nwalkers, ndim)
+            # 50p dust params
+            oname = "%s_sizedist_fin.fits" % (basename)
+            dustmodel.save_50percentile_results(
+                oname, sampler, obsdata, nburn=int(burnfrac * nsteps)
+            )
 
-    #     # setup the sampler
-    #     with Pool() as pool:
-    #         sampler = emcee.EnsembleSampler(
-    #             nwalkers,
-    #             ndim,
-    #             dustmodel.lnprob,
-    #             args=(obsdata, dustmodel),
-    #             pool=pool,
-    #             backend=backend,
-    #         )
+            if args.corner and ndim < 30:
+                # plot the walker chains for all parameters
+                nwalkers, nsteps, ndim = sampler.chain.shape
+                fig, ax = plt.subplots(ndim, sharex=True, figsize=(13, 13))
+                walk_val = np.arange(nsteps)
+                for i in range(ndim):
+                    for k in range(nwalkers):
+                        ax[i].plot(walk_val, sampler.chain[k, :, i], "-")
+                        ax[i].set_ylabel(pnames[i])
+                fig.savefig(f"{basename}_walker_param_values.png")
+                plt.close(fig)
 
-    #         # do the sampling
-    #         sampler.run_mcmc(p, nsteps, progress=True)
-
-    #     emcee_time = time.process_time()
-    #     print("emcee time taken: ", (emcee_time - opt_time) / 60.0, " min")
-
-    #     # best fit dust params
-    #     oname = "%s_sizedist_best_fin.fits" % (basename)
-    #     dustmodel.save_best_results(oname, sampler, obsdata)
-
-    #     # 50p dust params
-    #     oname = "%s_sizedist_fin.fits" % (basename)
-    #     dustmodel.save_50percentile_results(
-    #         oname, sampler, obsdata, nburn=int(burnfrac * nsteps)
-    #     )
-
-    #     if ndim < 30:
-
-    #         # plot the walker chains for all parameters
-    #         nwalkers, nsteps, ndim = sampler.chain.shape
-    #         fig, ax = plt.subplots(ndim, sharex=True, figsize=(13, 13))
-    #         walk_val = np.arange(nsteps)
-    #         for i in range(ndim):
-    #             for k in range(nwalkers):
-    #                 ax[i].plot(walk_val, sampler.chain[k, :, i], "-")
-    #                 ax[i].set_ylabel(pnames[i])
-    #         fig.savefig(f"{basename}_walker_param_values.png")
-    #         plt.close(fig)
-
-    #         # plot the 1D and 2D likelihood functions in a traditional triangle plot
-    #         nwalkers, nsteps = sampler.lnprobability.shape
-    #         # discard the 1st burn_frac (burn in)
-    #         flat_samples = sampler.get_chain(discard=int(burnfrac * nsteps), flat=True)
-    #         nflatsteps, ndim = flat_samples.shape
-    #         fig = corner.corner(
-    #             flat_samples,
-    #             labels=pnames,
-    #             show_titles=True,
-    #             title_fmt=".3f",
-    #             use_math_text=True,
-    #         )
-    #         fig.savefig(f"{basename}_param_triangle.png")
-    #         plt.close(fig)
+                # plot the 1D and 2D likelihood functions in a traditional triangle plot
+                nwalkers, nsteps = sampler.lnprobability.shape
+                # discard the 1st burn_frac (burn in)
+                flat_samples = sampler.get_chain(
+                    discard=int(burnfrac * nsteps), flat=True
+                )
+                nflatsteps, ndim = flat_samples.shape
+                fig = corner.corner(
+                    flat_samples,
+                    labels=pnames,
+                    show_titles=True,
+                    title_fmt=".3f",
+                    use_math_text=True,
+                )
+                plt.show()
+                fig.savefig(f"{basename}_param_triangle.png")
 
 
 if __name__ == "__main__":

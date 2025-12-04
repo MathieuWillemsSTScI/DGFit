@@ -81,6 +81,8 @@ class DustModel(object):
         self.divide_npoints = divide_npoints
         self.start_ISRF = start_ISRF
         self.regularization = regularization
+        self.deltas = {}
+        self.logs = {}
 
         # populate the grain info
         if componentnames is not None:
@@ -452,21 +454,20 @@ class DustModel(object):
                 tot += 1
             total_points = tot
 
-        # combine the lnps
-        lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
-        fit_weights = [
-            lnp_alav / lnp,
-            lnp_dep / lnp,
-            lnp_emission / lnp,
-            lnp_albedo / lnp,
-            lnp_g / lnp,
-            total_points,
-        ]
-        self.fracs = fit_weights
-
         if math.isinf(lnp) | math.isnan(lnp):
             return -np.inf
-        return lnp
+        else:
+            lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
+            fit_weights = [
+                lnp_alav / lnp,
+                lnp_dep / lnp,
+                lnp_emission / lnp,
+                lnp_albedo / lnp,
+                lnp_g / lnp,
+                total_points,
+            ]
+            self.fracs = fit_weights
+            return lnp
 
     @staticmethod
     def lnprob(params, obsdata, dustmodel):
@@ -489,7 +490,7 @@ class DustModel(object):
             natural log of the probability
         """
         # prior
-        #    make sure the size distributions are all positve
+        # make sure the size distributions are all positve
         lnp_bound = 0.0
         lnp_reg = 0.0
 
@@ -499,7 +500,11 @@ class DustModel(object):
 
         if dustmodel.regularization:
             delta = 0
-            for component in dustmodel.components:
+            for (
+                component
+            ) in (
+                dustmodel.components
+            ):  # regularization, puts a bound on the difference between size bins depending on the width of the bin
                 n_params = len(component.sizes)
                 small = params[0 + delta : n_params - 1 + delta]
                 big = params[1 + delta : n_params + delta]
@@ -835,6 +840,18 @@ class MRN77DustModel(DustModel):
                 "a_min": 1e-7,
                 "a_max": 1e-3,
             }
+            self.deltas[component.name] = {
+                "C": [5e-6, 1e-3],
+                "alpha": [1.0, 7.0],
+                "a_min": [3e-8, 1e-6],
+                "a_max": [1e-4, 1e-2],
+            }
+            self.logs[component.name] = {
+                "C": True,
+                "alpha": False,
+                "a_min": False,
+                "a_max": False,
+            }
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
@@ -984,6 +1001,18 @@ class WD01DustModel(DustModel):
                         "alpha_s": -1.41,
                         "beta_s": -11.5,
                     }
+                    self.deltas["astro-silicates-WD01"] = {
+                        "C_s": [1e7, 2e11],
+                        "a_ts": [500, 3000],
+                        "alpha_s": [-4, 1],
+                        "beta_s": [-100, 0],
+                    }
+                    self.logs["astro-silicates-WD01"] = {
+                        "C_s": True,
+                        "a_ts": True,
+                        "alpha_s": False,
+                        "beta_s": False,
+                    }
                 elif component.name == "astro-carbonaceous-WD01":
                     self.n_params.append(6)
                     self.parameters["astro-carbonaceous-WD01"] = {
@@ -993,6 +1022,22 @@ class WD01DustModel(DustModel):
                         "beta_g": -0.125,
                         "a_cg": 0.499e4,
                         "b_C": 3.0e-5 / (5.345e-22),
+                    }
+                    self.deltas["astro-carbonaceous-WD01"] = {
+                        "C_g": [1e7, 1e12],
+                        "a_tg": [1, 3000],
+                        "alpha_g": [-4, 10],
+                        "beta_g": [-10, 6],
+                        "a_cg": [50, 3000],
+                        "b_C": [1e16, 1e17],
+                    }
+                    self.logs["astro-carbonaceous-WD01"] = {
+                        "C_g": True,
+                        "a_tg": True,
+                        "alpha_g": False,
+                        "beta_g": False,
+                        "a_cg": True,
+                        "b_C": True,
                     }
                 else:
                     raise ValueError(
@@ -1033,9 +1078,9 @@ class WD01DustModel(DustModel):
         # larger grain size distribution
         # same for silicates and carbonaceous grains
         if beta >= 0.0:
-            Fa = 1.0 + beta * a / a_t
+            Fa = 1.0 + (beta * a / a_t)
         else:
-            Fa = 1.0 / (1.0 - beta * a / a_t)
+            Fa = 1.0 / (1.0 - (beta * a / a_t))
 
         Ga = np.full((len(a)), 1.0)
         (indxs,) = np.where(a > a_t)
@@ -1157,14 +1202,14 @@ class WD01DustModel(DustModel):
             # keep the normalization always positive
             if component.name in ["astro-silicates-WD01", "astro-carbonaceous-WD01"]:
                 if cparams[0] < 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if cparams[1] < 0.0:
-                    lnp_bound = -1e20
+                    lnp_bound = -np.inf
                 if component.name == "astro-carbonaceous-WD01":
                     if cparams[4] < 0.0:
-                        lnp_bound = -1e20
+                        lnp_bound = -np.inf
                     if cparams[5] < 0.0:
-                        lnp_bound = -1e20
+                        lnp_bound = -np.inf
 
         if not (0.25 <= params[-1] <= 20):
             lnp_bound = -np.inf
@@ -1205,6 +1250,24 @@ class ZDA04DustModel(DustModel):
                         "a_3": 1.98119e-3,  # 1.58225e-3 /// 1.98119e-3
                         "m_3": 9.25894,  # 8.71891 /// 9.25894
                     }
+                    self.deltas["PAH-ZDA04"] = {
+                        "A": [1e16, 5e19],
+                        "c_0": [-12, -5],
+                        "b_0": [-15, -2],
+                        "b_1": [5e2, 5e13],
+                        "m_1": [-20, -5],
+                        "a_3": [0, 0.1],
+                        "m_3": [5, 15],
+                    }
+                    self.logs["PAH-ZDA04"] = {
+                        "A": True,
+                        "c_0": False,
+                        "b_0": False,
+                        "b_1": True,
+                        "m_1": False,
+                        "a_3": False,
+                        "m_3": False,
+                    }
                 elif component.name == "Graphite-ZDA04":
                     self.n_params.append(12)
                     self.parameters["Graphite-ZDA04"] = {
@@ -1220,6 +1283,34 @@ class ZDA04DustModel(DustModel):
                         "b_4": 1.12602e3,
                         "a_4": 0.169079,
                         "m_4": 3.636654,
+                    }
+                    self.deltas["Graphite-ZDA04"] = {
+                        "A": [1e16, 5e19],
+                        "c_0": [-15, -5],
+                        "b_0": [-9, -1],
+                        "b_1": [1e-4, 1e-1],
+                        "a_1": [0, 1],
+                        "m_1": [0, 10],
+                        "b_3": [1e2, 1e4],
+                        "a_3": [0, 1],
+                        "m_3": [0, 10],
+                        "b_4": [1e2, 1e4],
+                        "a_4": [0, 1],
+                        "m_4": [0, 15],
+                    }
+                    self.logs["Graphite-ZDA04"] = {
+                        "A": True,
+                        "c_0": False,
+                        "b_0": False,
+                        "b_1": False,
+                        "a_1": False,
+                        "m_1": False,
+                        "b_3": True,
+                        "a_3": False,
+                        "m_3": False,
+                        "b_4": True,
+                        "a_4": False,
+                        "m_4": False,
                     }
                 elif component.name == "Silicates-ZDA04":
                     self.n_params.append(12)
@@ -1237,6 +1328,34 @@ class ZDA04DustModel(DustModel):
                         "a_4": 0.474035,
                         "m_4": 12.0995,
                     }
+                    self.deltas["Silicates-ZDA04"] = {
+                        "A": [1e16, 5e19],
+                        "c_0": [-12, -5],
+                        "b_0": [-7, -1],
+                        "b_1": [1e-10, 1e-7],
+                        "a_1": [0, 0.01],
+                        "m_1": [10, 80],
+                        "b_3": [500, 5000],
+                        "a_3": [0, 1.0],
+                        "m_3": [5, 25],
+                        "b_4": [500, 5000],
+                        "a_4": [0, 1.0],
+                        "m_4": [5, 20],
+                    }
+                    self.logs["Silicates-ZDA04"] = {
+                        "A": True,
+                        "c_0": False,
+                        "b_0": False,
+                        "b_1": False,
+                        "a_1": False,
+                        "m_1": False,
+                        "b_3": True,
+                        "a_3": False,
+                        "m_3": False,
+                        "b_4": True,
+                        "a_4": False,
+                        "m_4": False,
+                    }
                 elif component.name == "ACH2-ZDA04":
                     self.n_params.append(6)
                     self.parameters["ACH2-ZDA04"] = {
@@ -1247,6 +1366,22 @@ class ZDA04DustModel(DustModel):
                         "a_1": 2.03908e-4,
                         "m_1": 34.7835,
                     }
+                    self.deltas["ACH2-ZDA04"] = {
+                        "A": [1e12, 1e15],
+                        "c_0": [-6, 0],
+                        "b_0": [-6, 0],
+                        "b_1": [5e-31, 1e-16],
+                        "a_1": [0, 1e-2],
+                        "m_1": [20, 50],
+                    }
+                    self.logs["ACH2-ZDA04"] = {
+                        "A": True,
+                        "c_0": False,
+                        "b_0": False,
+                        "b_1": True,
+                        "a_1": False,
+                        "m_1": False,
+                    }
                 elif component.name == "Silicates1-ZDA04":
                     self.n_params.append(6)
                     self.parameters["Silicates1-ZDA04"] = {
@@ -1256,6 +1391,22 @@ class ZDA04DustModel(DustModel):
                         "b_1": 2.17105e-20,
                         "a_1": 3e-7,
                         "m_1": 29.2,
+                    }
+                    self.deltas["Silicates1-ZDA04"] = {
+                        "A": [1e16, 5e19],
+                        "c_0": [-12, -5],
+                        "b_0": [-8, -1],
+                        "b_1": [1e-33, 1e-13],
+                        "a_1": [0, 1e-3],
+                        "m_1": [5, 50],
+                    }
+                    self.logs["Silicates1-ZDA04"] = {
+                        "A": True,
+                        "c_0": False,
+                        "b_0": False,
+                        "b_1": True,
+                        "a_1": False,
+                        "m_1": False,
                     }
                 elif component.name == "Silicates2-ZDA04":
                     self.n_params.append(9)
@@ -1269,6 +1420,28 @@ class ZDA04DustModel(DustModel):
                         "b_2": 3.82848e2,
                         "a_2": 9.39615e-2,
                         "m_2": 8.94494,
+                    }
+                    self.deltas["Silicates2-ZDA04"] = {
+                        "A": [1e5, 1e10],
+                        "c_0": [1e3, 1e5],
+                        "b_0": [1e3, 1e5],
+                        "b_1": [1e3, 1e5],
+                        "a_1": [0, 1.0],
+                        "m_1": [0.1, 5.0],
+                        "b_2": [1e2, 1e4],
+                        "a_2": [0, 1.0],
+                        "m_2": [5.0, 15.0],
+                    }
+                    self.logs["Silicates2-ZDA04"] = {
+                        "A": True,
+                        "c_0": True,
+                        "b_0": True,
+                        "b_1": True,
+                        "a_1": False,
+                        "m_1": False,
+                        "b_2": True,
+                        "a_2": False,
+                        "m_2": False,
                     }
                 else:
                     raise ValueError(
@@ -1525,6 +1698,14 @@ class HD23DustModel(DustModel):
                         "B_1": 7.52e-7 / (3.24e-22),
                         "B_2": 8.09e-10 / (3.24e-22),
                     }
+                    self.deltas["Carbonaceous-HD23"] = {
+                        "B_1": [1e12, 1e17],
+                        "B_2": [0, 1e14],
+                    }
+                    self.logs["Carbonaceous-HD23"] = {
+                        "B_1": True,
+                        "B_2": True,
+                    }
                 elif component.name == "AstroDust-HD23":
                     self.n_params.append(9)
                     self.parameters["AstroDust-HD23"] = {
@@ -1537,6 +1718,28 @@ class HD23DustModel(DustModel):
                         "A_3": 0.1565691274812446021,
                         "A_4": 7.963246509606041607e-3,
                         "A_5": -1.680451603515705633e-3,
+                    }
+                    self.deltas["AstroDust-HD23"] = {
+                        "B_ad": [1e9, 1e14],
+                        "a_0": [10, 500],
+                        "sigma_ad": [0.01, 1.0],
+                        "A_0": [1e14, 5e18],
+                        "A_1": [-10, 10],
+                        "A_2": [-5, 5],
+                        "A_3": [-2.5, 2.5],
+                        "A_4": [-0.5, 0.5],
+                        "A_5": [-0.1, 0.1],
+                    }
+                    self.logs["AstroDust-HD23"] = {
+                        "B_ad": True,
+                        "a_0": True,
+                        "sigma_ad": False,
+                        "A_0": True,
+                        "A_1": False,
+                        "A_2": False,
+                        "A_3": False,
+                        "A_4": False,
+                        "A_5": False,
                     }
                 else:
                     raise ValueError(
@@ -1723,6 +1926,20 @@ class Y24DustModel(DustModel):
                         "a_t": 0.01,
                         "gamma": 1,
                     }
+                    self.deltas["a-C-Y24"] = {
+                        "A": [1e2, 1e5],
+                        "alpha": [-10, 0],
+                        "a_C": [0.0001, 0.5],
+                        "a_t": [0, 0.2],
+                        "gamma": [0, 5],
+                    }
+                    self.logs["a-C-Y24"] = {
+                        "A": True,
+                        "alpha": False,
+                        "a_C": False,
+                        "a_t": False,
+                        "gamma": False,
+                    }
                 elif component.name == "a-C:H-Y24":
                     self.n_params.append(3)
                     self.parameters["a-C:H-Y24"] = {
@@ -1730,12 +1947,32 @@ class Y24DustModel(DustModel):
                         "a_0": 6.195341e-3,
                         "sigma": 1.315171,
                     }
+                    self.deltas["a-C:H-Y24"] = {
+                        "A": [1e10, 1e14],
+                        "a_0": [0, 0.5],
+                        "sigma": [0.5, 5.0],
+                    }
+                    self.logs["a-C:H-Y24"] = {
+                        "A": True,
+                        "a_0": False,
+                        "sigma": False,
+                    }
                 elif component.name == "aSil-2-Y24":
                     self.n_params.append(3)
                     self.parameters["aSil-2-Y24"] = {
                         "A": 6.9843816e-6 / (5.34e-22),
                         "a_0": 9.210816e-04,
                         "sigma": 1.217290,
+                    }
+                    self.deltas["aSil-2-Y24"] = {
+                        "A": [1e14, 1e18],
+                        "a_0": [0, 0.5],
+                        "sigma": [0.5, 5.0],
+                    }
+                    self.logs["aSil-2-Y24"] = {
+                        "A": True,
+                        "a_0": False,
+                        "sigma": False,
                     }
                 else:
                     raise ValueError(
