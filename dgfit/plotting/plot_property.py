@@ -215,13 +215,13 @@ def main():
 
     ax1.plot(waves, data, "-x", color="black", label="Observed")
     ax1.fill_between(
-            waves,
-            data - data_unc,
-            data + data_unc,
-            color="k",
-            alpha=0.3,
-            label="Uncertainty",
-        )
+        waves,
+        data - data_unc,
+        data + data_unc,
+        color="k",
+        alpha=0.3,
+        label="Uncertainty",
+    )
 
     if args.add_fitted_line:
         ax1.plot(data_waves, rechte, "darkgrey", label="Fit")
@@ -251,13 +251,13 @@ def main():
         color="black",
     )
     ax2.fill_between(
-            data_waves,
-            residuals - unc,
-            residuals + unc,
-            color="k",
-            alpha=0.3,
-            label="Uncertainty",
-        )
+        data_waves,
+        residuals - unc,
+        residuals + unc,
+        color="k",
+        alpha=0.3,
+        label="Uncertainty",
+    )
     ax2.axhline(0, color="red", linestyle="--", linewidth=1)
     if args.inverse_lambda:
         ax2.set_xlabel(r"$1/\lambda \ [1/\mu m]$", fontsize=fontsize)
