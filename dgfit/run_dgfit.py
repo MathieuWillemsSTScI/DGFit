@@ -799,6 +799,22 @@ def main():
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
+        if args.fitting_package == "nautilus":
+            for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i]:
+                        prior.add_parameter(
+                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}", dist=(deltas[i][0], deltas[i][1])
+                        )
+
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
+
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
             p0, deltas, logs, _pnames_ = setparams_MRN77(
@@ -806,10 +822,10 @@ def main():
             )
             dustmodel.set_size_dist(p0)
 
-        if args.sampling_package == "nautilus":
+        if args.fitting_package == "nautilus":
             for i, name in enumerate(pnames):
                 if name != "RF":
-                    if logs[i] == True:
+                    if logs[i]:
                         prior.add_parameter(
                             f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
                         )
@@ -843,10 +859,10 @@ def main():
             )
             dustmodel.set_size_dist(p0)
 
-        if args.sampling_package == "nautilus":
+        if args.fitting_package == "nautilus":
             for i, name in enumerate(pnames):
                 if name != "RF":
-                    if logs[i] == True:
+                    if logs[i]:
                         prior.add_parameter(
                             f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
                         )
@@ -879,10 +895,10 @@ def main():
             )
             dustmodel.set_size_dist(p0)
 
-        if args.sampling_package == "nautilus":
+        if args.fitting_package == "nautilus":
             for i, name in enumerate(pnames):
                 if name != "RF":
-                    if logs[i] == True:
+                    if logs[i]:
                         prior.add_parameter(
                             f"{name}_c{i}", dist=loguniform(deltas[i][0], deltas[i][1])
                         )
@@ -916,10 +932,10 @@ def main():
             )
             dustmodel.set_size_dist(p0)
 
-        if args.sampling_package == "nautilus":
+        if args.fitting_package == "nautilus":
             for i, name in enumerate(pnames):
                 if name != "RF":
-                    if logs[i] == True:
+                    if logs[i]:
                         prior.add_parameter(
                             f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
                         )
@@ -953,10 +969,10 @@ def main():
             )
             dustmodel.set_size_dist(p0)
 
-        if args.sampling_package == "nautilus":
+        if args.fitting_package == "nautilus":
             for i, name in enumerate(pnames):
                 if name != "RF":
-                    if logs[i] == True:
+                    if logs[i]:
                         prior.add_parameter(
                             f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
                         )
@@ -974,7 +990,7 @@ def main():
         dustmodel.read_sizedist_from_file(args.read)
 
     elif sizedisttype == "bins":
-        if args.sampling_package != "nautilus":
+        if args.fitting_package != "nautilus":
             print("Only the nautilus sampling package is supported for bins")
             exit()
         dustmodel = DustModel(
@@ -1051,14 +1067,14 @@ def main():
     setup_time = time.process_time()
     print("setup time taken: ", (setup_time - start_time) / 60.0, " min")
 
-    if args.sampling_package == "nautilus":
+    if args.fitting_package == "nautilus":
 
         def loglike(a):
             x = np.array(list(a.values()))
             return dustmodel.lnprob(x, obsdata, dustmodel)
 
         sampler = Sampler(
-            prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}.hdf5"
+            prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}_sizedist.hdf5"
         )
         sampler.run(verbose=True)
         opt_time = time.process_time()
@@ -1068,7 +1084,7 @@ def main():
         points, log_w, log_l = sampler.posterior()
         map_index = np.argmax(log_w)
         opt_params = points[map_index]
-        if args.corner:
+        if args.cornerplot:
             fig = corner.corner(
                 points,
                 weights=np.exp(log_w),
@@ -1089,7 +1105,7 @@ def main():
         oname = f"{basename}_sizedist_best_optimizer.fits"
         dustmodel.save_results(oname, obsdata)
 
-    if args.sampling_package == "emcee":
+    if args.fitting_package == "emcee":
         # do simple optimization to find the best fit
         call_count = {"n": 0}
 
@@ -1179,7 +1195,7 @@ def main():
                 oname, sampler, obsdata, nburn=int(burnfrac * nsteps)
             )
 
-            if args.corner and ndim < 30:
+            if args.cornerplot and ndim < 30:
                 # plot the walker chains for all parameters
                 nwalkers, nsteps, ndim = sampler.chain.shape
                 fig, ax = plt.subplots(ndim, sharex=True, figsize=(13, 13))

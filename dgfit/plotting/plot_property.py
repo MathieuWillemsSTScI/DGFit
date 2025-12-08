@@ -213,7 +213,15 @@ def main():
         )
         yrange = get_krange(hdu.data[data_name + str(i + 1)], in_range=yrange)
 
-    ax1.errorbar(waves, data, data_unc, fmt="ko", label="Observed", capsize=3)
+    ax1.plot(waves, data, "-x", color="black", label="Observed")
+    ax1.fill_between(
+            waves,
+            data - data_unc,
+            data + data_unc,
+            color="k",
+            alpha=0.3,
+            label="Uncertainty",
+        )
 
     if args.add_fitted_line:
         ax1.plot(data_waves, rechte, "darkgrey", label="Fit")
@@ -237,14 +245,19 @@ def main():
 
     residuals = (data - hdu.data[data_name]) / data
     unc = data_unc / data
-    ax2.errorbar(
+    ax2.plot(
         data_waves,
         residuals,
-        yerr=unc,
-        fmt="o",
         color="black",
-        capsize=3,
     )
+    ax2.fill_between(
+            data_waves,
+            residuals - unc,
+            residuals + unc,
+            color="k",
+            alpha=0.3,
+            label="Uncertainty",
+        )
     ax2.axhline(0, color="red", linestyle="--", linewidth=1)
     if args.inverse_lambda:
         ax2.set_xlabel(r"$1/\lambda \ [1/\mu m]$", fontsize=fontsize)

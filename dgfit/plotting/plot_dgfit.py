@@ -47,8 +47,9 @@ def plot_dgfit_sizedist(
     fontsize=12,
     mass=True,
     plegend=True,
-    ltype=["o-", "x-"],
+    ltype=["o-", "x-", "D-"],
     alpha=1.0,
+    markers=1
 ):
     if "DISTPUNC" in hdulist[1].data.names:
         plot_uncs = True
@@ -90,6 +91,7 @@ def plot_dgfit_sizedist(
             xvals[gindxs],
             yvals[gindxs],
             colors[i] + ltype[i],
+            markevery=markers,
             label=hdu.header["EXTNAME"],
             alpha=alpha,
         )
@@ -354,6 +356,9 @@ def main():
     parser.add_argument(
         "--start", help="include the starting model", action="store_true"
     )
+    parser.add_argument(
+        "--markeverynth", type=int, default=2, help="Put a marker every nth point"
+    )
     parser.add_argument("--smc", help="use an SMC sightline", action="store_true")
     parser.add_argument(
         "-p", "--png", help="save figure as a png file", action="store_true"
@@ -383,7 +388,7 @@ def main():
     OD = ObsData(args.obsfile)
 
     # plot the dust size distributions
-    plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, mass=True, plegend=True)
+    plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, mass=True, plegend=True, markers=args.markeverynth)
 
     # plot the abundances
     plot_dgfit_abundances(
@@ -417,7 +422,7 @@ def main():
             repstr = "best_optimizer"
         hdulist2 = fits.open(args.filename.replace(repstr, "start"))
         plot_dgfit_sizedist(
-            ax[0, 0], hdulist2, fontsize=fontsize, plegend=False, ltype="--", alpha=0.50
+            ax[0, 0], hdulist2, fontsize=fontsize, plegend=False, alpha=0.50, markers=args.markeverynth
         )
         plot_dgfit_abundances(
             ax[0, 1], hdulist2["ABUNDANCES"], OD, fontsize=fontsize, color="c"

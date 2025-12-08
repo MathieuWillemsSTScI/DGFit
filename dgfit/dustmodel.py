@@ -454,10 +454,10 @@ class DustModel(object):
                 tot += 1
             total_points = tot
 
+        lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
         if math.isinf(lnp) | math.isnan(lnp):
             return -np.inf
         else:
-            lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
             fit_weights = [
                 lnp_alav / lnp,
                 lnp_dep / lnp,

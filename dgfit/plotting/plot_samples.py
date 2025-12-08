@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import argparse
-import numpy as np
 import corner
 import h5py  # for HDF5 support
 
