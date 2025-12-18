@@ -117,9 +117,6 @@ def DGFit_cmdparser():
     parser.add_argument(
         "-t", "--tag", default="GrainBow_test", help="basename to use for output files"
     )
-    parser.add_argument(
-        "-c", "--cpus", metavar=int, default=4, help="number of cpus to use"
-    )
     parser.add_argument("--nolarge", action="store_true", help="Deweight a > 5 micron")
     parser.add_argument(
         "--weight_by_average_unc",
@@ -156,6 +153,9 @@ def DGFit_cmdparser():
     )
     parser.add_argument(
         "--ncores", type=int, default=4, help="Number of cores to use if you run parallel"
+    )
+    parser.add_argument(
+        "--nlivepoints", type=int, default=2000, help="Number of live points to use for nautilus"
     )
 
     return parser
@@ -1084,11 +1084,11 @@ def main():
 
         if args.parallel:
             sampler = Sampler(
-                prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
+                prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
             )
         else:
             sampler = Sampler(
-                prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}_sizedist.hdf5"
+                prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5"
             )
         sampler.run(verbose=True)
         opt_time = time.process_time()
