@@ -148,6 +148,15 @@ def DGFit_cmdparser():
         default=False,
         help="Generate a corner plot of the posterior distributions",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        default=False,
+        help="Allows you to run in parallel",
+    )
+    parser.add_argument(
+        "--ncores", type=int, default=4, help="Number of cores to use if you run parallel"
+    )
 
     return parser
 
@@ -1073,9 +1082,14 @@ def main():
             x = np.array(list(a.values()))
             return dustmodel.lnprob(x, obsdata, dustmodel)
 
-        sampler = Sampler(
-            prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}_sizedist.hdf5"
-        )
+        if args.parallel:
+            sampler = Sampler(
+                prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
+            )
+        else:
+            sampler = Sampler(
+                prior, loglike, n_live=2000, filepath=f"checkpoint_{basename}_sizedist.hdf5"
+            )
         sampler.run(verbose=True)
         opt_time = time.process_time()
         print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
