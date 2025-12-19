@@ -749,18 +749,19 @@ def main():
     # save the start time
     start_time = time.process_time()
 
-    # emcee parameters
-    if args.fast:
-        print("using the fast params")
-        nsteps = 100
-        burnfrac = 0.1
-    elif args.slow:
-        print("using the slow params")
-        nsteps = 10000
-        burnfrac = 0.2
-    else:
-        burnfrac = float(args.burnfrac)
-        nsteps = int(args.nsteps)
+    if args.fitting_package == "emcee":
+        # emcee parameters
+        if args.fast:
+            print("using the fast params")
+            nsteps = 100
+            burnfrac = 0.1
+        elif args.slow:
+            print("using the slow params")
+            nsteps = 10000
+            burnfrac = 0.2
+        else:
+            burnfrac = float(args.burnfrac)
+            nsteps = int(args.nsteps)
 
     # get the location of the provided data
     ref = importlib_resources.files("dgfit") / "data"
@@ -1015,7 +1016,6 @@ def main():
         eps = 1e-6
         p0 = []
         for k in range(0, dustmodel.n_components):
-            print(dustmodel.components[k].name)
             if dustmodel.components[k].name in [
                 "astro-carbonaceous-WD01",
                 "PAH-ZDA04",
