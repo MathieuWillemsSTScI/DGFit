@@ -438,19 +438,19 @@ class DustModel(object):
         if self.divide_npoints:
             tot = 0
             if obsdata.ext_npts > 0:
-                lnp_alav /= obsdata.ext_npts
+                lnp_alav -= obsdata.ext_npts
                 tot += 1
             if obsdata.abundance_npts > 0:
-                lnp_dep /= obsdata.abundance_npts
+                lnp_dep -= obsdata.abundance_npts
                 tot += 1
             if obsdata.ir_emission_npts > 0:
-                lnp_emission /= obsdata.ir_emission_npts
+                lnp_emission -= obsdata.ir_emission_npts
                 tot += 1
             if obsdata.scat_a_npts > 0:
-                lnp_albedo /= obsdata.scat_a_npts
+                lnp_albedo -= obsdata.scat_a_npts
                 tot += 1
-            if obsdata.scat_g_npts:
-                lnp_g /= obsdata.scat_g_npts
+            if obsdata.scat_g_npts > 0:
+                lnp_g -= obsdata.scat_g_npts
                 tot += 1
             total_points = tot
 

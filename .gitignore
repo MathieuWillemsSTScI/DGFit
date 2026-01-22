@@ -64,3 +64,4 @@ distribute-*.tar.gz
 *.png
 *.h5
 *.hdf5
+*.txt

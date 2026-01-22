@@ -117,7 +117,8 @@ def DGFit_cmdparser():
     parser.add_argument(
         "-t", "--tag", default="GrainBow_test", help="basename to use for output files"
     )
-    parser.add_argument("--nolarge", action="store_true", help="Deweight a > 5 micron")
+    parser.add_argument("--nolarge", action="store_true", help="Deweight sizes bigger than the cutoff size")
+    parser.add_argument("--cutoff", type=float, default=5.0, help="The cutoff size in micron")
     parser.add_argument(
         "--weight_by_average_unc",
         action="store_true",
@@ -156,6 +157,9 @@ def DGFit_cmdparser():
     )
     parser.add_argument(
         "--nlivepoints", type=int, default=2000, help="Number of live points to use for nautilus"
+    )
+    parser.add_argument(
+        "--result_from_file", default="none", help="give the name of the file with the parameters"
     )
 
     return parser
@@ -738,6 +742,23 @@ def setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF):
     return p0, deltas, logs, pnames
 
 
+def add_priors_nautilus(pnames, logs, deltas, prior):
+    for i, name in enumerate(pnames):
+                if name != "RF":
+                    if logs[i]:
+                        prior.add_parameter(
+                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                        )
+                    else:
+                        prior.add_parameter(
+                            f"{name}", dist=(deltas[i][0], deltas[i][1])
+                        )
+
+                else:
+                    prior.add_parameter("RF", dist=(0.25, 20))
+                    logs.append(False)
+
+
 def main():
     parser = DGFit_cmdparser()
 
@@ -809,22 +830,6 @@ def main():
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
-        if args.fitting_package == "nautilus":
-            for i, name in enumerate(pnames):
-                if name != "RF":
-                    if logs[i]:
-                        prior.add_parameter(
-                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
-                        )
-                    else:
-                        prior.add_parameter(
-                            f"{name}", dist=(deltas[i][0], deltas[i][1])
-                        )
-
-                else:
-                    prior.add_parameter("RF", dist=(0.25, 20))
-                    logs.append(False)
-
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
             p0, deltas, logs, _pnames_ = setparams_MRN77(
@@ -833,20 +838,7 @@ def main():
             dustmodel.set_size_dist(p0)
 
         if args.fitting_package == "nautilus":
-            for i, name in enumerate(pnames):
-                if name != "RF":
-                    if logs[i]:
-                        prior.add_parameter(
-                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
-                        )
-                    else:
-                        prior.add_parameter(
-                            f"{name}", dist=(deltas[i][0], deltas[i][1])
-                        )
-
-                else:
-                    prior.add_parameter("RF", dist=(0.25, 20))
-                    logs.append(False)
+            add_priors_nautilus(pnames, logs, deltas, prior)
 
     elif sizedisttype == "WD01":
         dustmodel = WD01DustModel(
@@ -870,19 +862,7 @@ def main():
             dustmodel.set_size_dist(p0)
 
         if args.fitting_package == "nautilus":
-            for i, name in enumerate(pnames):
-                if name != "RF":
-                    if logs[i]:
-                        prior.add_parameter(
-                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
-                        )
-                    else:
-                        prior.add_parameter(
-                            f"{name}", dist=(deltas[i][0], deltas[i][1])
-                        )
-                else:
-                    prior.add_parameter("RF", dist=(0.25, 20))
-                    logs.append(False)
+            add_priors_nautilus(pnames, logs, deltas, prior)
 
     elif sizedisttype == "ZDA04":
         dustmodel = ZDA04DustModel(
@@ -906,20 +886,7 @@ def main():
             dustmodel.set_size_dist(p0)
 
         if args.fitting_package == "nautilus":
-            for i, name in enumerate(pnames):
-                if name != "RF":
-                    if logs[i]:
-                        prior.add_parameter(
-                            f"{name}_c{i}", dist=loguniform(deltas[i][0], deltas[i][1])
-                        )
-                    else:
-                        prior.add_parameter(
-                            f"{name}_c{i}", dist=(deltas[i][0], deltas[i][1])
-                        )
-
-                else:
-                    prior.add_parameter("RF", dist=(0.25, 20))
-                    logs.append(False)
+            add_priors_nautilus(pnames, logs, deltas, prior)
 
     elif sizedisttype == "HD23":
         dustmodel = HD23DustModel(
@@ -943,20 +910,7 @@ def main():
             dustmodel.set_size_dist(p0)
 
         if args.fitting_package == "nautilus":
-            for i, name in enumerate(pnames):
-                if name != "RF":
-                    if logs[i]:
-                        prior.add_parameter(
-                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
-                        )
-                    else:
-                        prior.add_parameter(
-                            f"{name}", dist=(deltas[i][0], deltas[i][1])
-                        )
-
-                else:
-                    prior.add_parameter("RF", dist=(0.25, 20))
-                    logs.append(False)
+            add_priors_nautilus(pnames, logs, deltas, prior)
 
     elif sizedisttype == "Y24":
         dustmodel = Y24DustModel(
@@ -980,20 +934,7 @@ def main():
             dustmodel.set_size_dist(p0)
 
         if args.fitting_package == "nautilus":
-            for i, name in enumerate(pnames):
-                if name != "RF":
-                    if logs[i]:
-                        prior.add_parameter(
-                            f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
-                        )
-                    else:
-                        prior.add_parameter(
-                            f"{name}", dist=(deltas[i][0], deltas[i][1])
-                        )
-
-                else:
-                    prior.add_parameter("RF", dist=(0.25, 20))
-                    logs.append(False)
+            add_priors_nautilus(pnames, logs, deltas, prior)
 
     # replace the default size distribution with one from a file
     elif args.read is not None:
@@ -1015,6 +956,8 @@ def main():
 
         eps = 1e-6
         p0 = []
+        lowers = []
+        uppers = []
         for k in range(0, dustmodel.n_components):
             if dustmodel.components[k].name in [
                 "astro-carbonaceous-WD01",
@@ -1048,8 +991,12 @@ def main():
 
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
-                    if dustmodel.components[k].sizes[kk] > 5e-4:
-                        print("Deweighting size ", dustmodel.components[k].sizes[kk])
+                    if dustmodel.components[k].sizes[kk] > (args.cutoff * 1e-4):
+                        print("Deweighting size", dustmodel.components[k].sizes[kk]*10000, "microns")
+                        p0.append(0)
+                        prior.add_parameter(f"c{k + 1}_s{kk}", dist=0)
+                        lowers.append(0)
+                        uppers.append(0)
                         continue
                 pnames += [f"c{k + 1}_s{kk}"]
                 p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
@@ -1058,11 +1005,15 @@ def main():
                 upper *= 1 + (eps * (k + kk + 1))
                 lower *= 1 - (eps * (k + kk + 1))
                 prior.add_parameter(f"c{k + 1}_s{kk}", dist=loguniform(lower, upper))
+                lowers.append(lower)
+                uppers.append(upper)
 
         if ISRF:
             pnames += ["RF"]
             p0.append(1)
             prior.add_parameter("RF", dist=(0.25, 20))
+            lowers.append(0.25)
+            uppers.append(20)
         dustmodel.set_size_dist(p0)
 
     else:
@@ -1081,38 +1032,56 @@ def main():
         def loglike(a):
             x = np.array(list(a.values()))
             return dustmodel.lnprob(x, obsdata, dustmodel)
+        
+        if args.result_from_file == "none":
 
-        if args.parallel:
-            sampler = Sampler(
-                prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
-            )
+            if args.parallel:
+                sampler = Sampler(
+                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
+                )
+            else:
+                sampler = Sampler(
+                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5"
+                )
+            sampler.run(verbose=True)
+            opt_time = time.process_time()
+            print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
+            print(f"Evidence: {sampler.log_z}")
+
+            points, log_w, log_l = sampler.posterior()
+            map_index = np.argmax(log_w)
+            opt_params = points[map_index]
+            if args.cornerplot:
+                fig = corner.corner(
+                    points,
+                    weights=np.exp(log_w),
+                    bins=100,
+                    labels=prior.keys,
+                    color="purple",
+                    show_titles=True,
+                    title_fmt=".2f",
+                    plot_datapoints=False,
+                    range=np.repeat(0.999, len(prior.keys)),
+                )
+                plt.show()
+                fig.savefig(f"{basename}_corner_plot.png")
+                plt.close(fig)
+            
         else:
-            sampler = Sampler(
-                prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5"
-            )
-        sampler.run(verbose=True)
-        opt_time = time.process_time()
-        print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
-        print(f"Evidence: {sampler.log_z}")
-
-        points, log_w, log_l = sampler.posterior()
-        map_index = np.argmax(log_w)
-        opt_params = points[map_index]
-        if args.cornerplot:
-            fig = corner.corner(
-                points,
-                weights=np.exp(log_w),
-                bins=100,
-                labels=prior.keys,
-                color="purple",
-                show_titles=True,
-                title_fmt=".2f",
-                plot_datapoints=False,
-                range=np.repeat(0.999, len(prior.keys)),
-            )
-            plt.show()
-            fig.savefig(f"{basename}_corner_plot.png")
-            plt.close(fig)
+            x_max = np.loadtxt(f"{args.result_from_file}")
+            opt = np.array(x_max)
+            lowers = np.array(lowers)
+            uppers = np.array(uppers)
+            opt_params = np.zeros(len(opt))
+            for i, value in enumerate(uppers):
+                if value != 0:
+                    opt_params[i] = (lowers[i] * (uppers[i]/lowers[i])**opt[i])
+                    if i < (len(opt_params) - 1):
+                        if opt_params[i] <= (3 * lowers[i]):
+                            opt_params[i] = 0
+            if ISRF:
+                opt_params[-1] = lowers[-1] + (opt[-1] * (uppers[-1] - lowers[-1]))
+            
 
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")

@@ -62,7 +62,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(14, 9))
 
-    if args.composition[0] == "Carbon":
+    if args.composition == "Carbon":
         composition = [
             "astro-carbonaceous-WD01",
             "PAH-ZDA04",
