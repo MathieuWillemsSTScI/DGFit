@@ -1072,13 +1072,18 @@ def main():
             opt = np.array(x_max)
             lowers = np.array(lowers)
             uppers = np.array(uppers)
-            opt_params = np.zeros(len(opt))
+            opt_params = np.zeros(len(uppers))
+            p = 0
             for i, value in enumerate(uppers):
                 if value != 0:
-                    opt_params[i] = (lowers[i] * (uppers[i]/lowers[i])**opt[i])
+                    k = i - p
+                    opt_params[i] = (lowers[i] * (uppers[i]/lowers[i])**opt[k])
                     if i < (len(opt_params) - 1):
                         if opt_params[i] <= (3 * lowers[i]):
                             opt_params[i] = 0
+                else:
+                    opt_params[i] = 0
+                    p += 1
             if ISRF:
                 opt_params[-1] = lowers[-1] + (opt[-1] * (uppers[-1] - lowers[-1]))
             
