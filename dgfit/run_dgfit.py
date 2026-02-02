@@ -959,62 +959,35 @@ def main():
         lowers = []
         uppers = []
         for k in range(0, dustmodel.n_components):
-            if dustmodel.components[k].name in [
-                "astro-carbonaceous-WD01",
-                "PAH-ZDA04",
-                "Graphite-ZDA04",
-                "ACH2-ZDA04",
-                "Carbonaceous-HD23",
-                "a-C-Y24",
-                "a-C:H-Y24",
-            ]:
-                sizes = dustmodel.components[k].sizes
-                n_sizes = len(sizes)
-                col_dens = dustmodel.components[k].col_den_constant
-                atoms_per_grain = col_dens * (sizes**3)
-                n_atoms = obsdata.abundance_av["C"][0] + obsdata.abundance_av["C"][1]
-                n_grains = n_atoms / atoms_per_grain
-                delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
-                delta = np.append(delta, delta[-1])
-                n_grains /= delta / 2
-
-            else:
-                sizes = dustmodel.components[k].sizes
-                n_sizes = len(sizes)
-                col_dens = dustmodel.components[k].col_den_constant[3]
-                atoms_per_grain = col_dens * (sizes**3)
-                n_atoms = obsdata.abundance_av["O"][0] + obsdata.abundance_av["O"][1]
-                n_grains = n_atoms / atoms_per_grain
-                delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
-                delta = np.append(delta, delta[-1])
-                n_grains /= delta / 2
-
+            n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
                     if dustmodel.components[k].sizes[kk] > (args.cutoff * 1e-4):
                         print("Deweighting size", dustmodel.components[k].sizes[kk]*10000, "microns")
-                        p0.append(0)
                         prior.add_parameter(f"c{k + 1}_s{kk}", dist=0)
+                        p0.append(0)
                         lowers.append(0)
                         uppers.append(0)
                         continue
                 pnames += [f"c{k + 1}_s{kk}"]
-                p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
-                upper = 2 * n_grains[kk]
-                lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 100
+                upper = n_grains[kk]
+                lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1000
                 upper *= 1 + (eps * (k + kk + 1))
                 lower *= 1 - (eps * (k + kk + 1))
                 prior.add_parameter(f"c{k + 1}_s{kk}", dist=loguniform(lower, upper))
+                p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 lowers.append(lower)
                 uppers.append(upper)
 
         if ISRF:
             pnames += ["RF"]
-            p0.append(1)
             prior.add_parameter("RF", dist=(0.25, 20))
+            p0.append(1)
             lowers.append(0.25)
             uppers.append(20)
         dustmodel.set_size_dist(p0)
+
+        np.savetxt(f"priors_{args.tag}.txt", np.column_stack((uppers, lowers)), fmt="%.10e")
 
     else:
         print("Size distribution choice not known")

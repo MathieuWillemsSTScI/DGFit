@@ -83,6 +83,20 @@ class DustModel(object):
         self.regularization = regularization
         self.deltas = {}
         self.logs = {}
+        self.carbonaceous_names = [
+            "astro-carbonaceous-WD01",
+            "PAH-ZDA04",
+            "Graphite-ZDA04",
+            "ACH2-ZDA04",
+            "Carbonaceous-HD23",
+            "a-C-Y24",
+            "a-C:H-Y24"]
+        self.silicate_names = [
+            "astro-silicates-WD01",
+            "Silicates-ZDA04",
+            "AstroDust-HD23",
+            "aSil-2-Y24",
+        ]
 
         # populate the grain info
         if componentnames is not None:
@@ -815,6 +829,23 @@ class DustModel(object):
 
         # save the best fit size distributions
         self.save_results(oname, obsdata)
+
+    def calculate_priors(self, component, obsdata):
+        sizes = component.sizes
+        n_sizes = len(sizes)
+        col_dens = component.col_den_constant
+        if component.name in self.carbonaceous_names:
+            n_atoms = obsdata.abundance_av["C"][0] + obsdata.abundance_av["C"][1]
+            atoms_per_grain = col_dens * (sizes**3)
+        elif component.name in self.silicate_names:
+            n_atoms = obsdata.abundance_av["O"][0] + obsdata.abundance_av["O"][1]
+            atoms_per_grain = col_dens[3] * (sizes**3)
+        n_grains = n_atoms / atoms_per_grain
+        delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
+        delta = np.append(delta, delta[-1])
+        n_grains /= delta / 2
+
+        return n_grains
 
 
 # ================================================================

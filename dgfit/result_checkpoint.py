@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import corner
 import math
 
+from dgfit.dustmodel import DustModel
+from dgfit.obsdata import ObsData
+
 
 def load_nautilus_checkpoint(fname, n_live):
 
@@ -52,7 +55,7 @@ def posterior_resample(samples, weights, n_draws):
     )
     return samples[idx]
 
-def corner_in_chunks(samples, weights, logl, chunk_size=5, tag="posterior"):
+def corner_in_chunks(samples, weights, logl, chunk_size=5, tag="posterior", prior_file="none"):
     """
     Make multiple weighted corner plots and overlay the
     highest-likelihood point as red lines.
@@ -63,33 +66,32 @@ def corner_in_chunks(samples, weights, logl, chunk_size=5, tag="posterior"):
 
     # highest likelihood (global)
     idx_max = np.argmax(logl)
-    theta_max = samples[idx_max]
 
     for c in range(n_chunks):
 
         start = c * chunk_size
         end = min((c+1)*chunk_size, n_dim)
 
-        # slice ML point to same subset
-        truths_subset = theta_max[start:end]
+        uppers, lowers = np.loadtxt(prior_file, unpack=True)
+        ratio = uppers / lowers
+        samples_phys = lowers * (ratio**samples)
 
-        n_nonzero = np.count_nonzero(weights)
-        Nplot = n_nonzero  # number of points to plot
-
-        s_draw = posterior_resample(samples, weights, n_draws=Nplot)
-        s_chunk = s_draw[:, start:end]
+        s_chunk = samples_phys[:, start:end]
+        theta_max = samples_phys[idx_max]
         truths_subset = theta_max[start:end]
 
         labels = [f"p{i}" for i in range(start, end)]  # labels must match exactly
 
         fig = corner.corner(
             s_chunk,
+            weights=weights,
             labels=labels,
             truths=truths_subset,       # <-- red ML marker
             truth_color="red",
             show_titles=True,
             title_fmt=".3g",
-            quantiles=[0.16, 0.5, 0.84]
+            quantiles=[0.16, 0.5, 0.84],
+            range=np.repeat(0.9, len(labels))
         )
         plt.show()
         plt.close(fig)
@@ -104,7 +106,7 @@ def main():
     parser.add_argument("filename")
     parser.add_argument("nlive", type=int)
     parser.add_argument("tag")
-
+    parser.add_argument("priors")
     args = parser.parse_args()
 
     samples, weights, logl = load_nautilus_checkpoint(
@@ -117,7 +119,7 @@ def main():
     print("Dead:", len(samples))
     print("target ~", 5*args.nlive, "to", 10*args.nlive)
 
-    theta_max, idx_max = corner_in_chunks(samples, weights, logl, chunk_size=5, tag="posterior")
+    theta_max, idx_max = corner_in_chunks(samples, weights, logl, chunk_size=5, tag="posterior", prior_file = args.priors)
 
     np.savetxt(f"{args.tag}.txt", theta_max, header="Highest likelihood parameters", fmt="%.8f")
 
