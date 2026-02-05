@@ -4,6 +4,7 @@ import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
+import h5py
 
 from scipy.optimize import minimize
 import emcee
@@ -958,6 +959,7 @@ def main():
         p0 = []
         lowers = []
         uppers = []
+        used_sizes = []
         for k in range(0, dustmodel.n_components):
             n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
@@ -973,11 +975,14 @@ def main():
                 upper = n_grains[kk]
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1000
                 upper *= 1 + (eps * (k + kk + 1))
+                upper *= dustmodel.components[k].sizes[kk]**3
                 lower *= 1 - (eps * (k + kk + 1))
-                prior.add_parameter(f"c{k + 1}_s{kk}", dist=loguniform(lower, upper))
+                lower *= dustmodel.components[k].sizes[kk]**3
+                prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper))
                 p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 lowers.append(lower)
                 uppers.append(upper)
+                used_sizes.append(dustmodel.components[k].sizes[kk])
 
         if ISRF:
             pnames += ["RF"]
@@ -985,8 +990,8 @@ def main():
             p0.append(1)
             lowers.append(0.25)
             uppers.append(20)
-        dustmodel.set_size_dist(p0)
 
+        dustmodel.set_size_dist(p0)
         np.savetxt(f"priors_{args.tag}.txt", np.column_stack((uppers, lowers)), fmt="%.10e")
 
     else:
@@ -1004,13 +1009,15 @@ def main():
 
         def loglike(a):
             x = np.array(list(a.values()))
+            sizes = np.array(used_sizes)
+            x[:-1] /= sizes**3
             return dustmodel.lnprob(x, obsdata, dustmodel)
         
         if args.result_from_file == "none":
 
             if args.parallel:
                 sampler = Sampler(
-                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
+                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores, n_networks=args.ncores/2
                 )
             else:
                 sampler = Sampler(
@@ -1022,23 +1029,43 @@ def main():
             print(f"Evidence: {sampler.log_z}")
 
             points, log_w, log_l = sampler.posterior()
-            map_index = np.argmax(log_w)
+            map_index = np.argmax(log_l)
             opt_params = points[map_index]
+            weights = np.exp(log_w)
+            labels = np.array(prior.keys)
+
+            with h5py.File(f"posterior_samples_{args.tag}.h5", "w") as f:
+                f["points"] = points
+                f["log_w"]  = log_w
+                f["log_l"]  = log_l
+                f["labels"] = labels.astype("S")
+
             if args.cornerplot:
-                fig = corner.corner(
-                    points,
-                    weights=np.exp(log_w),
-                    bins=100,
-                    labels=prior.keys,
-                    color="purple",
-                    show_titles=True,
-                    title_fmt=".2f",
-                    plot_datapoints=False,
-                    range=np.repeat(0.999, len(prior.keys)),
-                )
-                plt.show()
-                fig.savefig(f"{basename}_corner_plot.png")
-                plt.close(fig)
+                n_params = points.shape[1]
+                chunk_size = 5
+
+                for start in range(0, n_params, chunk_size):
+                    end = start + chunk_size
+                    pts_subset = points[:, start:end]
+                    labels_subset = labels[start:end]
+                    opt_subset = opt_params[start:end]
+
+                    fig = corner.corner(
+                        pts_subset,
+                        weights=weights,
+                        bins=100,
+                        labels=labels_subset,
+                        color="purple",
+                        show_titles=True,
+                        title_fmt=".3g",
+                        quantiles=[0.16, 0.5, 0.84],
+                        levels=[0.68, 0.95],
+                        plot_datapoints=False,
+                        range=np.repeat(0.999, len(labels_subset)),
+                    )
+                    corner.overplot_lines(fig, opt_subset, color="red")
+                    plt.show()
+                    plt.close(fig)
             
         else:
             x_max = np.loadtxt(f"{args.result_from_file}")
@@ -1051,15 +1078,17 @@ def main():
                 if value != 0:
                     k = i - p
                     opt_params[i] = (lowers[i] * (uppers[i]/lowers[i])**opt[k])
-                    if i < (len(opt_params) - 1):
-                        if opt_params[i] <= (3 * lowers[i]):
-                            opt_params[i] = 0
                 else:
                     opt_params[i] = 0
                     p += 1
             if ISRF:
                 opt_params[-1] = lowers[-1] + (opt[-1] * (uppers[-1] - lowers[-1]))
             
+        if args.sizedisttype == "bins":
+            for i, value in enumerate(lowers):
+                if i < (len(opt_params) - 1):
+                            if opt_params[i] <= (2 * lowers[i]):
+                                opt_params[i] = 0
 
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")
