@@ -1017,7 +1017,7 @@ def main():
 
             if args.parallel:
                 sampler = Sampler(
-                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores, n_networks=args.ncores/2
+                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores, n_networks=int(args.ncores/2)
                 )
             else:
                 sampler = Sampler(
