@@ -975,9 +975,7 @@ def main():
                 upper = n_grains[kk]
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1000
                 upper *= 1 + (eps * (k + kk + 1))
-                upper *= dustmodel.components[k].sizes[kk]**3
                 lower *= 1 - (eps * (k + kk + 1))
-                lower *= dustmodel.components[k].sizes[kk]**3
                 prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper))
                 p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 lowers.append(lower)
@@ -1009,15 +1007,13 @@ def main():
 
         def loglike(a):
             x = np.array(list(a.values()))
-            sizes = np.array(used_sizes)
-            x[:-1] /= sizes**3
             return dustmodel.lnprob(x, obsdata, dustmodel)
         
         if args.result_from_file == "none":
 
             if args.parallel:
                 sampler = Sampler(
-                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores, n_networks=int(args.ncores/2)
+                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
                 )
             else:
                 sampler = Sampler(
@@ -1083,12 +1079,6 @@ def main():
                     p += 1
             if ISRF:
                 opt_params[-1] = lowers[-1] + (opt[-1] * (uppers[-1] - lowers[-1]))
-            
-        if args.sizedisttype == "bins":
-            for i, value in enumerate(lowers):
-                if i < (len(opt_params) - 1):
-                            if opt_params[i] <= (2 * lowers[i]):
-                                opt_params[i] = 0
 
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")

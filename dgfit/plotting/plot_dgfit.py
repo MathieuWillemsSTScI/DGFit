@@ -50,6 +50,7 @@ def plot_dgfit_sizedist(
     ltype=["o-", "x-", "D-"],
     alpha=1.0,
     markers=1,
+    file="none",
 ):
     if "DISTPUNC" in hdulist[1].data.names:
         plot_uncs = True
@@ -58,6 +59,7 @@ def plot_dgfit_sizedist(
 
     yrange = [0]
     all_yvals = []
+    j = 0
     for i in range(hdulist[0].header["NCOMPS"]):
         hdu = hdulist[i + 1]
 
@@ -95,6 +97,20 @@ def plot_dgfit_sizedist(
             label=hdu.header["EXTNAME"],
             alpha=alpha,
         )
+        if file != "none":
+            length = len(xvals)
+            uppers, lowers = np.loadtxt(file, unpack=True)
+            comp_lower = lowers[j:j+length] * (hdu.data["SIZE"] ** 3)
+            comp_upper = uppers[j:j+length] * (hdu.data["SIZE"] ** 3)
+            ax.fill_between(
+                xvals,
+                comp_lower,
+                comp_upper,
+                color=colors[i],
+                alpha=0.2,
+                zorder=0,
+            )
+            j += length
         if plot_uncs:
             ax.errorbar(
                 xvals[gindxs],
@@ -367,6 +383,9 @@ def main():
         "-e", "--eps", help="save figure as an eps file", action="store_true"
     )
     parser.add_argument("-pdf", help="save figure as a pdf file", action="store_true")
+    parser.add_argument(
+        "--priorfile", default="none", help="Data file giving the prior range"
+    )
     args = parser.parse_args()
 
     # setup the plots
@@ -395,6 +414,7 @@ def main():
         mass=True,
         plegend=True,
         markers=args.markeverynth,
+        file=args.priorfile
     )
 
     # plot the abundances
