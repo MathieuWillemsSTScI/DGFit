@@ -973,7 +973,7 @@ def main():
                         continue
                 pnames += [f"c{k + 1}_s{kk}"]
                 upper = n_grains[kk]
-                lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1000
+                lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 100000
                 upper *= 1 + (eps * (k + kk + 1))
                 lower *= 1 - (eps * (k + kk + 1))
                 prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper))
