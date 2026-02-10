@@ -966,7 +966,7 @@ def main():
                 if args.nolarge:
                     if dustmodel.components[k].sizes[kk] > (args.cutoff * 1e-4):
                         print("Deweighting size", dustmodel.components[k].sizes[kk]*10000, "microns")
-                        prior.add_parameter(f"c{k + 1}_s{kk}", dist=0)
+                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
                         p0.append(0)
                         lowers.append(0)
                         uppers.append(0)
@@ -980,7 +980,7 @@ def main():
                 p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 lowers.append(lower)
                 uppers.append(upper)
-                used_sizes.append(dustmodel.components[k].sizes[kk])
+                used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
 
         if ISRF:
             pnames += ["RF"]
