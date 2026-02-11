@@ -531,6 +531,7 @@ class DustModel(object):
                 denom = 2 * (((big_sizes - small_sizes) / big_sizes) ** 2)
                 reg = np.sum(nom / denom)
                 lnp_reg += reg
+                lnp_reg /= 10
                 delta += n_params
 
         # update the size distributions
