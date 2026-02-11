@@ -960,7 +960,9 @@ def main():
         lowers = []
         uppers = []
         used_sizes = []
+        n_deweighted_comp = []
         for k in range(0, dustmodel.n_components):
+            n_deweighted = 0
             n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
@@ -970,8 +972,9 @@ def main():
                         p0.append(0)
                         lowers.append(0)
                         uppers.append(0)
+                        n_deweighted += 1
                         continue
-                pnames += [f"c{k + 1}_s{kk}"]
+                pnames += [f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk]*10000, decimals=5)}"]
                 upper = n_grains[kk]
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 100000
                 upper *= 1 + (eps * (k + kk + 1))
@@ -981,6 +984,7 @@ def main():
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
+            n_deweighted_comp.append(n_deweighted)
 
         if ISRF:
             pnames += ["RF"]
@@ -1001,7 +1005,7 @@ def main():
 
     # setup time
     setup_time = time.process_time()
-    print("setup time taken: ", (setup_time - start_time) / 60.0, " min")
+    print("Setup time taken: ", np.round((setup_time - start_time) / 60.0, decimals=3), " min")
 
     if args.fitting_package == "nautilus":
 
@@ -1021,20 +1025,19 @@ def main():
                 )
             sampler.run(verbose=True)
             opt_time = time.process_time()
-            print("optimizer time taken: ", (opt_time - setup_time) / 60.0, " min")
+            print("Optimizer time taken: ", np.round((opt_time - setup_time) / 60.0, decimals=2), " min")
             print(f"Evidence: {sampler.log_z}")
 
             points, log_w, log_l = sampler.posterior()
             map_index = np.argmax(log_l)
             opt_params = points[map_index]
             weights = np.exp(log_w)
-            labels = np.array(prior.keys)
 
             with h5py.File(f"posterior_samples_{args.tag}.h5", "w") as f:
                 f["points"] = points
                 f["log_w"]  = log_w
                 f["log_l"]  = log_l
-                f["labels"] = labels.astype("S")
+                f["labels"] = pnames
 
             if args.cornerplot:
                 n_params = points.shape[1]
@@ -1043,7 +1046,7 @@ def main():
                 for start in range(0, n_params, chunk_size):
                     end = start + chunk_size
                     pts_subset = points[:, start:end]
-                    labels_subset = labels[start:end]
+                    labels_subset = pnames[start:end]
                     opt_subset = opt_params[start:end]
 
                     fig = corner.corner(
@@ -1079,6 +1082,14 @@ def main():
                     p += 1
             if ISRF:
                 opt_params[-1] = lowers[-1] + (opt[-1] * (uppers[-1] - lowers[-1]))
+
+        new_opt = np.zeros(len(p0))
+        index = 0
+        for i, value in enumerate(p0):
+            if value != 0:
+                new_opt[i] = opt_params[index]
+                index += 1
+        opt_params = new_opt
 
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")

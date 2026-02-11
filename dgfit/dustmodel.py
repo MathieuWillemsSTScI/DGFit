@@ -514,16 +514,19 @@ class DustModel(object):
 
         if dustmodel.regularization:
             delta = 0
-            for (
-                component
-            ) in (
-                dustmodel.components
-            ):  # regularization, puts a bound on the difference between size bins depending on the width of the bin
+            for component in dustmodel.components:  # regularization, puts a bound on the difference between size bins depending on the width of the bin
                 n_params = len(component.sizes)
                 small = params[0 + delta : n_params - 1 + delta]
                 big = params[1 + delta : n_params + delta]
                 small_sizes = component.sizes[0 : n_params - 1]
                 big_sizes = component.sizes[1:n_params]
+
+                mask = (big > 0)
+                small = small[mask]
+                big = big[mask]
+                small_sizes = small_sizes[mask]
+                big_sizes = big_sizes[mask]
+
                 nom = -(((big - small) / big) ** 2)
                 denom = 2 * (((big_sizes - small_sizes) / big_sizes) ** 2)
                 reg = np.sum(nom / denom)

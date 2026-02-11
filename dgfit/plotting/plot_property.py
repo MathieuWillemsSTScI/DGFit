@@ -150,7 +150,7 @@ def main():
         if args.no_ylogscale:
             ylogscale = False
         ylim = False
-        mark = 10
+        mark = 100
 
     elif args.dustproperty == "albedo":
         waves = OD.scat_a_waves
@@ -213,7 +213,7 @@ def main():
         )
         yrange = get_krange(hdu.data[data_name + str(i + 1)], in_range=yrange)
 
-    ax1.plot(waves, data, "-x", color="black", label="Observed")
+    ax1.plot(waves, data, "-x", color="black", label="Observed", markevery=100)
     ax1.fill_between(
         waves,
         data - data_unc,
