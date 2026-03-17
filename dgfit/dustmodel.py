@@ -68,6 +68,7 @@ class DustModel(object):
         divide_npoints=False,
         start_ISRF=1,
         regularization=False,
+        fluffy_grains=False,
     ):
         self.origin = None
         self.n_components = 0
@@ -81,21 +82,22 @@ class DustModel(object):
         self.divide_npoints = divide_npoints
         self.start_ISRF = start_ISRF
         self.regularization = regularization
+        self.fluffy_grains = fluffy_grains
         self.deltas = {}
         self.logs = {}
         self.carbonaceous_names = [
-            "astro-carbonaceous-WD01",
-            "PAH-ZDA04",
-            "Graphite-ZDA04",
-            "ACH2-ZDA04",
-            "Carbonaceous-HD23",
-            "a-C-Y24",
-            "a-C:H-Y24"]
+            "Carbonaceous-LD01",
+            "Graphite-LD93",
+            "Carbonaceous-DL07",
+            "amC-ACH2-Z96",
+            "amC-BE-Z96",
+            "amC-ACAR-Z96",
+            "a-C-J16",
+            "a-C:H-J16"]
         self.silicate_names = [
-            "astro-silicates-WD01",
-            "Silicates-ZDA04",
-            "AstroDust-HD23",
-            "aSil-2-Y24",
+            "Silicates-DL84",
+            "AstroDust-DH21",
+            "aSil-2-D22",
         ]
 
         # populate the grain info
@@ -111,7 +113,10 @@ class DustModel(object):
         if self.n_components > 0:
             self.n_params = []
             for component in self.components:
-                self.n_params.append(component.n_sizes)
+                n = component.n_sizes
+                if self.fluffy_grains:
+                    n += 1
+                self.n_params.append(n)
 
     def read_grain_files(self, componentnames, path="./", every_nth=5):
         """
@@ -244,9 +249,14 @@ class DustModel(object):
         for k, component in enumerate(self.components):
             delta_val = self.n_params[k]
             k2 = k1 + delta_val
+            if self.fluffy_grains:
+                k2 -= 1
             component.size_dist[:] = self.compute_size_dist(
                 component.sizes[:], params[k1:k2], component.name
             )
+            if self.fluffy_grains:
+                component.fluffy_grain_factor = params[k2]
+                k2 += 1
             if self.variable_ISRF:
                 component.RF_strength = params[-1]
             k1 += delta_val
@@ -452,36 +462,37 @@ class DustModel(object):
         if self.divide_npoints:
             tot = 0
             if obsdata.ext_npts > 0:
-                lnp_alav -= obsdata.ext_npts
+                lnp_alav -= np.log(obsdata.ext_npts)
                 tot += 1
             if obsdata.abundance_npts > 0:
-                lnp_dep -= obsdata.abundance_npts
+                lnp_dep -= np.log(obsdata.abundance_npts)
                 tot += 1
             if obsdata.ir_emission_npts > 0:
-                lnp_emission -= obsdata.ir_emission_npts
+                lnp_emission -= np.log(obsdata.ir_emission_npts)
                 tot += 1
             if obsdata.scat_a_npts > 0:
-                lnp_albedo -= obsdata.scat_a_npts
+                lnp_albedo -= np.log(obsdata.scat_a_npts)
                 tot += 1
             if obsdata.scat_g_npts > 0:
-                lnp_g -= obsdata.scat_g_npts
+                lnp_g -= np.log(obsdata.scat_g_npts)
                 tot += 1
             total_points = tot
 
         lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
         if math.isinf(lnp) | math.isnan(lnp):
             return -np.inf
-        else:
-            fit_weights = [
-                lnp_alav / lnp,
-                lnp_dep / lnp,
-                lnp_emission / lnp,
-                lnp_albedo / lnp,
-                lnp_g / lnp,
-                total_points,
-            ]
-            self.fracs = fit_weights
-            return lnp
+        
+        fit_weights = [
+            lnp_alav,
+            lnp_dep,
+            lnp_emission,
+            lnp_albedo,
+            lnp_g,
+            lnp,
+            total_points
+        ]
+        self.fracs = fit_weights
+        return lnp
 
     @staticmethod
     def lnprob(params, obsdata, dustmodel):
@@ -684,9 +695,12 @@ class DustModel(object):
 
         for k, component in enumerate(self.components):
             results = component.eff_grain_props(OD, predict_all=True)
+            result_contribution = component.calculate_contribution_per_size(OD, predict_all=True)
             tcabs = results["cabs"]
             tcsca = results["csca"]
-            # tnatoms = results['natoms']
+            cabs_per_size = result_contribution["cabs"]
+            csca_per_size = result_contribution["csca"]
+            ext_per_size = 1.086 * (cabs_per_size + csca_per_size)
 
             tcol = fits.Column(
                 name="EXT" + str(k + 1), format="E", array=1.086 * (tcabs + tcsca)
@@ -706,6 +720,17 @@ class DustModel(object):
             all_cols_g.append(tcol)
 
             ISRF = component.RF_strength
+
+            hdu = fits.ImageHDU(ext_per_size)
+            hdu.header["EXTNAME"] = f"EXTSIZE_{component.name}"
+            hdulist.append(hdu)
+            meta_cols = [
+            fits.Column(name="SIZE", format="E", array=component.sizes),
+            fits.Column(name="WAVE", format="E", array=component.wavelengths),
+            ]
+            meta_hdu = fits.BinTableHDU.from_columns(meta_cols)
+            meta_hdu.header["EXTNAME"] = f"EXTSIZE_META_{component.name}"
+            hdulist.append(meta_hdu)
 
         # now output the results
         #    extinction
@@ -867,8 +892,7 @@ class MRN77DustModel(DustModel):
         super().__init__(**kwargs)
         self.sizedisttype = "MRN77"
         self.n_params = [4] * self.n_components
-        self.n_params.append(1)
-        for component in self.components:
+        for i, component in enumerate(self.components):
             self.parameters[component.name] = {
                 "C": 1e-25 / (3.782e-22),
                 "alpha": 3.5,
@@ -887,7 +911,12 @@ class MRN77DustModel(DustModel):
                 "a_min": False,
                 "a_max": False,
             }
+            if self.fluffy_grains:
+                self.n_params[i] += 1
+                self.parameters[component.name][f"Fluff_{i}"] = 1
+
         if self.variable_ISRF:
+            self.n_params.append(1)
             self.parameters["Radiation field"] = {"RF": self.start_ISRF}
 
     def compute_size_dist(self, x, params, composition):
@@ -943,6 +972,9 @@ class MRN77DustModel(DustModel):
                 "a_min": cparams[2],
                 "a_max": cparams[3],
             }
+            if self.fluffy_grains:
+                self.parameters[component.name][f"Fluff_{k}"] = cparams[4]
+
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
 
@@ -999,9 +1031,6 @@ class MRN77DustModel(DustModel):
             if cparams[1] < 0.0:
                 lnp_bound = -np.inf
 
-        if not (0.25 <= params[-1] <= 20):
-            lnp_bound = -np.inf
-
         if lnp_bound < 0.0:
             return lnp_bound
         else:
@@ -1027,30 +1056,31 @@ class WD01DustModel(DustModel):
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
-            for component in self.components:
-                if component.name == "astro-silicates-WD01":
-                    self.n_params.append(4)
-                    self.parameters["astro-silicates-WD01"] = {
+            for i, component in enumerate(self.components):
+                if component.name == "Silicates-DL84":
+                    n = 4
+                    self.parameters[component.name] = {
                         "C_s": 1.33e-12 / (5.345e-22),
                         "a_ts": 0.171e4,
                         "alpha_s": -1.41,
                         "beta_s": -11.5,
                     }
-                    self.deltas["astro-silicates-WD01"] = {
+                    self.deltas[component.name] = {
                         "C_s": [1e7, 2e11],
                         "a_ts": [500, 3000],
                         "alpha_s": [-4, 1],
                         "beta_s": [-100, 0],
                     }
-                    self.logs["astro-silicates-WD01"] = {
+                    self.logs[component.name] = {
                         "C_s": True,
                         "a_ts": True,
                         "alpha_s": False,
                         "beta_s": False,
                     }
-                elif component.name == "astro-carbonaceous-WD01":
-                    self.n_params.append(6)
-                    self.parameters["astro-carbonaceous-WD01"] = {
+
+                elif component.name == "Carbonaceous-LD01":
+                    n = 6
+                    self.parameters[component.name] = {
                         "C_g": 4.15e-11 / (5.345e-22),
                         "a_tg": 0.00837e4,
                         "alpha_g": -1.91,
@@ -1058,7 +1088,7 @@ class WD01DustModel(DustModel):
                         "a_cg": 0.499e4,
                         "b_C": 3.0e-5 / (5.345e-22),
                     }
-                    self.deltas["astro-carbonaceous-WD01"] = {
+                    self.deltas[component.name] = {
                         "C_g": [1e7, 1e12],
                         "a_tg": [1, 3000],
                         "alpha_g": [-4, 10],
@@ -1066,7 +1096,7 @@ class WD01DustModel(DustModel):
                         "a_cg": [50, 3000],
                         "b_C": [1e16, 1e17],
                     }
-                    self.logs["astro-carbonaceous-WD01"] = {
+                    self.logs[component.name] = {
                         "C_g": True,
                         "a_tg": True,
                         "alpha_g": False,
@@ -1078,6 +1108,12 @@ class WD01DustModel(DustModel):
                     raise ValueError(
                         "%s grain material note supported" % component.name
                     )
+                
+                if self.fluffy_grains:
+                    n += 1
+                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                self.n_params.append(n)
+                
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -1103,10 +1139,10 @@ class WD01DustModel(DustModel):
 
         if len(params) == 6:
             # carbonaceous
-            C, a_t, alpha, beta, a_c, input_bC = params
+            C, a_t, alpha, beta, a_c, input_bC = params[:6]
         else:
             # silicates
-            C, a_t, alpha, beta = params
+            C, a_t, alpha, beta = params[:4]
             a_c = 0.1e4
             input_bC = None
 
@@ -1159,12 +1195,12 @@ class WD01DustModel(DustModel):
 
             sizedist += Da
 
-        if composition == "astro-carbonaceous-WD01":
+        if composition == "Carbonaceous-LD01":
             (indxs,) = np.where(np.logical_or(a < 3.5, a > 1e4))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "astro-silicates-WD01":
+        if composition == "Silicates-DL84":
             (indxs,) = np.where(np.logical_or(a < 3.5, a > 3e3))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
@@ -1185,15 +1221,18 @@ class WD01DustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "astro-silicates-WD01":
-                self.parameters["astro-silicates-WD01"] = {
+            if component.name == "Silicates-DL84":
+                self.parameters[component.name] = {
                     "C_s": cparams[0],
                     "a_ts": cparams[1],
                     "alpha_s": cparams[2],
                     "beta_s": cparams[3],
                 }
-            elif component.name == "astro-carbonaceous-WD01":
-                self.parameters["astro-carbonaceous-WD01"] = {
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[4]
+
+            elif component.name == "Carbonaceous-LD01":
+                self.parameters[component.name] = {
                     "C_g": cparams[0],
                     "a_tg": cparams[1],
                     "alpha_g": cparams[2],
@@ -1201,6 +1240,9 @@ class WD01DustModel(DustModel):
                     "a_cg": cparams[4],
                     "b_C": cparams[5],
                 }
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"]  = cparams[6]
+
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
 
@@ -1235,19 +1277,16 @@ class WD01DustModel(DustModel):
             k1 += dustmodel.n_params[k]
 
             # keep the normalization always positive
-            if component.name in ["astro-silicates-WD01", "astro-carbonaceous-WD01"]:
+            if component.name in ["Silicates-DL84", "Carbonaceous-LD01"]:
                 if cparams[0] < 0.0:
                     lnp_bound = -np.inf
                 if cparams[1] < 0.0:
                     lnp_bound = -np.inf
-                if component.name == "astro-carbonaceous-WD01":
+                if component.name == "Carbonaceous-LD01":
                     if cparams[4] < 0.0:
                         lnp_bound = -np.inf
                     if cparams[5] < 0.0:
                         lnp_bound = -np.inf
-
-        if not (0.25 <= params[-1] <= 20):
-            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1273,152 +1312,156 @@ class ZDA04DustModel(DustModel):
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
-            for component in self.components:
-                if component.name == "PAH-ZDA04":
-                    self.n_params.append(7)
-                    self.parameters["PAH-ZDA04"] = {  # ACH2 model /// Graphite model
-                        "A": 2.484404e-3 / (5.34e-22),  # 4.727727e-3 /// 2.484404e-3
-                        "c_0": -8.54571,  # -8.91244 /// -8.54571
-                        "b_0": -3.60112,  # -3.72015 /// -3.60112
-                        "b_1": 1.86525e5,  # 6.78215e5 /// 1.86525e5
-                        "m_1": -13.5755,  # -14.2532 /// -13.5755
-                        "a_3": 1.98119e-3,  # 1.58225e-3 /// 1.98119e-3
-                        "m_3": 9.25894,  # 8.71891 /// 9.25894
+            for i, component in enumerate(self.components):
+                if component.name == "Carbonaceous-LD01":
+                    n = 7
+                    self.parameters[component.name] = {  # ACH2 model /// Graphite model
+                        f"A_{i}": 2.484404e-3 / (5.34e-22),  # 4.727727e-3 /// 2.484404e-3
+                        f"c_0_{i}": -8.54571,  # -8.91244 /// -8.54571
+                        f"b_0_{i}": -3.60112,  # -3.72015 /// -3.60112
+                        f"b_1_{i}": 1.86525e5,  # 6.78215e5 /// 1.86525e5
+                        f"m_1_{i}": -13.5755,  # -14.2532 /// -13.5755
+                        f"a_3_{i}": 1.98119e-3,  # 1.58225e-3 /// 1.98119e-3
+                        f"m_3_{i}": 9.25894,  # 8.71891 /// 9.25894
                     }
-                    self.deltas["PAH-ZDA04"] = {
-                        "A": [1e16, 5e19],
-                        "c_0": [-12, -5],
-                        "b_0": [-15, -2],
-                        "b_1": [5e2, 5e13],
-                        "m_1": [-20, -5],
-                        "a_3": [0, 0.1],
-                        "m_3": [5, 15],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e16, 5e19],
+                        f"c_0_{i}": [-12, -5],
+                        f"b_0_{i}": [-15, -2],
+                        f"b_1_{i}": [5e2, 5e13],
+                        f"m_1_{i}": [-20, -5],
+                        f"a_3_{i}": [0, 0.1],
+                        f"m_3_{i}": [5, 15],
                     }
-                    self.logs["PAH-ZDA04"] = {
-                        "A": True,
-                        "c_0": False,
-                        "b_0": False,
-                        "b_1": True,
-                        "m_1": False,
-                        "a_3": False,
-                        "m_3": False,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
+                        f"c_0_{i}": False,
+                        f"b_0_{i}": False,
+                        f"b_1_{i}": True,
+                        f"m_1_{i}": False,
+                        f"a_3_{i}": False,
+                        f"m_3_{i}": False,
                     }
-                elif component.name == "Graphite-ZDA04":
-                    self.n_params.append(12)
-                    self.parameters["Graphite-ZDA04"] = {
-                        "A": 1.901190e-3 / (5.34e-22),
-                        "c_0": -10.1149,
-                        "b_0": -5.3308,
-                        "b_1": 7.54276e-2,
-                        "a_1": 8.08703e-2,
-                        "m_1": 3.37644,
-                        "b_3": 1.12502e3,
-                        "a_3": 0.145378,
-                        "m_3": 3.49042,
-                        "b_4": 1.12602e3,
-                        "a_4": 0.169079,
-                        "m_4": 3.636654,
+
+                elif component.name == "Graphite-LD93":
+                    n = 12
+                    self.parameters[component.name] = {
+                        f"A_{i}": 1.901190e-3 / (5.34e-22),
+                        f"c_0_{i}": -10.1149,
+                        f"b_0_{i}": -5.3308,
+                        f"b_1_{i}": 7.54276e-2,
+                        f"a_1_{i}": 8.08703e-2,
+                        f"m_1_{i}": 3.37644,
+                        f"b_3_{i}": 1.12502e3,
+                        f"a_3_{i}": 0.145378,
+                        f"m_3_{i}": 3.49042,
+                        f"b_4_{i}": 1.12602e3,
+                        f"a_4_{i}": 0.169079,
+                        f"m_4_{i}": 3.636654,
                     }
-                    self.deltas["Graphite-ZDA04"] = {
-                        "A": [1e16, 5e19],
-                        "c_0": [-15, -5],
-                        "b_0": [-9, -1],
-                        "b_1": [1e-4, 1e-1],
-                        "a_1": [0, 1],
-                        "m_1": [0, 10],
-                        "b_3": [1e2, 1e4],
-                        "a_3": [0, 1],
-                        "m_3": [0, 10],
-                        "b_4": [1e2, 1e4],
-                        "a_4": [0, 1],
-                        "m_4": [0, 15],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e16, 5e19],
+                        f"c_0_{i}": [-15, -5],
+                        f"b_0_{i}": [-9, -1],
+                        f"b_1_{i}": [1e-4, 1e-1],
+                        f"a_1_{i}": [0, 1],
+                        f"m_1_{i}": [0, 10],
+                        f"b_3_{i}": [1e2, 1e4],
+                        f"a_3_{i}": [0, 1],
+                        f"m_3_{i}": [0, 10],
+                        f"b_4_{i}": [1e2, 1e4],
+                        f"a_4_{i}": [0, 1],
+                        f"m_4_{i}": [0, 15],
                     }
-                    self.logs["Graphite-ZDA04"] = {
-                        "A": True,
-                        "c_0": False,
-                        "b_0": False,
-                        "b_1": False,
-                        "a_1": False,
-                        "m_1": False,
-                        "b_3": True,
-                        "a_3": False,
-                        "m_3": False,
-                        "b_4": True,
-                        "a_4": False,
-                        "m_4": False,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
+                        f"c_0_{i}": False,
+                        f"b_0_{i}": False,
+                        f"b_1_{i}": False,
+                        f"a_1_{i}": False,
+                        f"m_1_{i}": False,
+                        f"b_3_{i}": True,
+                        f"a_3_{i}": False,
+                        f"m_3_{i}": False,
+                        f"b_4_{i}": True,
+                        f"a_4_{i}": False,
+                        f"m_4_{i}": False,
                     }
-                elif component.name == "Silicates-ZDA04":
-                    self.n_params.append(12)
-                    self.parameters["Silicates-ZDA04"] = {
-                        "A": 1.541199e-3 / (5.34e-22),
-                        "c_0": -8.53081,
-                        "b_0": -3.70009,
-                        "b_1": 3.96003e-9,
-                        "a_1": 9.11246e-3,
-                        "m_1": 47.0606,
-                        "b_3": 1.48e3,
-                        "a_3": 0.484381,
-                        "m_3": 12.3253,
-                        "b_4": 1.481e3,
-                        "a_4": 0.474035,
-                        "m_4": 12.0995,
+
+                elif component.name == "Silicates-DL84":
+                    n = 12
+                    self.parameters[component.name] = {
+                        f"A_{i}": 1.541199e-3 / (5.34e-22),
+                        f"c_0_{i}": -8.53081,
+                        f"b_0_{i}": -3.70009,
+                        f"b_1_{i}": 3.96003e-9,
+                        f"a_1_{i}": 9.11246e-3,
+                        f"m_1_{i}": 47.0606,
+                        f"b_3_{i}": 1.48e3,
+                        f"a_3_{i}": 0.484381,
+                        f"m_3_{i}": 12.3253,
+                        f"b_4_{i}": 1.481e3,
+                        f"a_4_{i}": 0.474035,
+                        f"m_4_{i}": 12.0995,
                     }
-                    self.deltas["Silicates-ZDA04"] = {
-                        "A": [1e16, 5e19],
-                        "c_0": [-12, -5],
-                        "b_0": [-7, -1],
-                        "b_1": [1e-10, 1e-7],
-                        "a_1": [0, 0.01],
-                        "m_1": [10, 80],
-                        "b_3": [500, 5000],
-                        "a_3": [0, 1.0],
-                        "m_3": [5, 25],
-                        "b_4": [500, 5000],
-                        "a_4": [0, 1.0],
-                        "m_4": [5, 20],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e16, 5e19],
+                        f"c_0_{i}": [-12, -5],
+                        f"b_0_{i}": [-7, -1],
+                        f"b_1_{i}": [1e-10, 1e-7],
+                        f"a_1_{i}": [0, 0.01],
+                        f"m_1_{i}": [10, 80],
+                        f"b_3_{i}": [500, 5000],
+                        f"a_3_{i}": [0, 1.0],
+                        f"m_3_{i}": [5, 25],
+                        f"b_4_{i}": [500, 5000],
+                        f"a_4_{i}": [0, 1.0],
+                        f"m_4_{i}": [5, 20],
                     }
-                    self.logs["Silicates-ZDA04"] = {
-                        "A": True,
-                        "c_0": False,
-                        "b_0": False,
-                        "b_1": False,
-                        "a_1": False,
-                        "m_1": False,
-                        "b_3": True,
-                        "a_3": False,
-                        "m_3": False,
-                        "b_4": True,
-                        "a_4": False,
-                        "m_4": False,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
+                        f"c_0_{i}": False,
+                        f"b_0_{i}": False,
+                        f"b_1_{i}": False,
+                        f"a_1_{i}": False,
+                        f"m_1_{i}": False,
+                        f"b_3_{i}": True,
+                        f"a_3_{i}": False,
+                        f"m_3_{i}": False,
+                        f"b_4_{i}": True,
+                        f"a_4_{i}": False,
+                        f"m_4_{i}": False,
                     }
-                elif component.name == "ACH2-ZDA04":
-                    self.n_params.append(6)
-                    self.parameters["ACH2-ZDA04"] = {
-                        "A": 7.862901e-8 / (5.34e-22),
-                        "c_0": -3.92513,
-                        "b_0": -3.54913,
-                        "b_1": 2.13708e-17,
-                        "a_1": 2.03908e-4,
-                        "m_1": 34.7835,
+
+                elif component.name == "amC-ACH2-Z96":
+                    n = 6
+                    self.parameters[component.name] = {
+                        f"A_{i}": 7.862901e-8 / (5.34e-22),
+                        f"c_0_{i}": -3.92513,
+                        f"b_0_{i}": -3.54913,
+                        f"b_1_{i}": 2.13708e-17,
+                        f"a_1_{i}": 2.03908e-4,
+                        f"m_1_{i}": 34.7835,
                     }
-                    self.deltas["ACH2-ZDA04"] = {
-                        "A": [1e12, 1e15],
-                        "c_0": [-6, 0],
-                        "b_0": [-6, 0],
-                        "b_1": [5e-31, 1e-16],
-                        "a_1": [0, 1e-2],
-                        "m_1": [20, 50],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e12, 1e15],
+                        f"c_0_{i}": [-6, 0],
+                        f"b_0_{i}": [-6, 0],
+                        f"b_1_{i}": [5e-31, 1e-16],
+                        f"a_1_{i}": [0, 1e-2],
+                        f"m_1_{i}": [20, 50],
                     }
-                    self.logs["ACH2-ZDA04"] = {
-                        "A": True,
-                        "c_0": False,
-                        "b_0": False,
-                        "b_1": True,
-                        "a_1": False,
-                        "m_1": False,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
+                        f"c_0_{i}": False,
+                        f"b_0_{i}": False,
+                        f"b_1_{i}": True,
+                        f"a_1_{i}": False,
+                        f"m_1_{i}": False,
                     }
+
                 elif component.name == "Silicates1-ZDA04":
-                    self.n_params.append(6)
+                    n = 6
                     self.parameters["Silicates1-ZDA04"] = {
                         "A": 3.680573e-3 / (5.34e-22),
                         "c_0": -8.88283,
@@ -1443,8 +1486,9 @@ class ZDA04DustModel(DustModel):
                         "a_1": False,
                         "m_1": False,
                     }
+
                 elif component.name == "Silicates2-ZDA04":
-                    self.n_params.append(9)
+                    n = 9
                     self.parameters["Silicates2-ZDA04"] = {
                         "A": 6.218762e-9 / (5.34e-22),
                         "c_0": 9.04443e3,
@@ -1478,11 +1522,18 @@ class ZDA04DustModel(DustModel):
                         "a_2": False,
                         "m_2": False,
                     }
+
                 else:
                     raise ValueError(
                         "%s grain material note supported for this size distribution"
                         % component.name
                     )
+                
+                if self.fluffy_grains:
+                    n += 1
+                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                self.n_params.append(n)
+
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -1507,14 +1558,14 @@ class ZDA04DustModel(DustModel):
         a = x * 1e4
 
         if len(params) == 9:
-            A, c_0, b_0, b_1, a_1, m_1, b_2, a_2, m_2 = params
+            A, c_0, b_0, b_1, a_1, m_1, b_2, a_2, m_2 = params[:9]
             # b_3 = a_3 = m_3 = b_4 = a_4 = m_4 = 0
             term3 = b_2 * (np.abs(np.log10(a / a_2)) ** m_2)
             term4 = 0.0
             term5 = 0.0
 
         elif len(params) == 7:
-            A, c_0, b_0, b_1, m_1, a_3, m_3 = params
+            A, c_0, b_0, b_1, m_1, a_3, m_3 = params[:7]
             a_1 = 1
             b_3 = 1e24
             # b_2 = a_2 = m_2 = b_4 = a_4 = m_4 = 0
@@ -1523,14 +1574,14 @@ class ZDA04DustModel(DustModel):
             term5 = 0.0
 
         elif len(params) == 6:
-            A, c_0, b_0, b_1, a_1, m_1 = params
+            A, c_0, b_0, b_1, a_1, m_1 = params[:6]
             # b_2 = a_2 = m_2 = b_3 = a_3 = m_3 = b_4 = a_4 = m_4 = 0
             term3 = 0.0
             term4 = 0.0
             term5 = 0.0
 
         else:
-            A, c_0, b_0, b_1, a_1, m_1, b_3, a_3, m_3, b_4, a_4, m_4 = params
+            A, c_0, b_0, b_1, a_1, m_1, b_3, a_3, m_3, b_4, a_4, m_4 = params[:12]
             # b_2 = a_2 = m_2 = 0
             term3 = 0.0
             term4 = b_3 * np.power(np.abs(a - a_3), m_3)
@@ -1589,55 +1640,67 @@ class ZDA04DustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "PAH-ZDA04":
-                self.parameters["PAH-ZDA04"] = {
-                    "A": cparams[0],
-                    "c_0": cparams[1],
-                    "b_0": cparams[2],
-                    "b_1": cparams[3],
-                    "m_1": cparams[4],
-                    "a_3": cparams[5],
-                    "m_3": cparams[6],
+            if component.name == "Carbonaceous-LD01":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
+                    f"c_0_{k}": cparams[1],
+                    f"b_0_{k}": cparams[2],
+                    f"b_1_{k}": cparams[3],
+                    f"m_1_{k}": cparams[4],
+                    f"a_3_{k}": cparams[5],
+                    f"m_3_{k}": cparams[6],
                 }
-            elif component.name == "Graphite-ZDA04":
-                self.parameters["Graphite-ZDA04"] = {
-                    "A": cparams[0],
-                    "c_0": cparams[1],
-                    "b_0": cparams[2],
-                    "b_1": cparams[3],
-                    "a_1": cparams[4],
-                    "m_1": cparams[5],
-                    "b_3": cparams[6],
-                    "a_3": cparams[7],
-                    "m_3": cparams[8],
-                    "b_4": cparams[9],
-                    "a_4": cparams[10],
-                    "m_4": cparams[11],
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[7]
+
+            elif component.name == "Graphite-LD93":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
+                    f"c_0_{k}": cparams[1],
+                    f"b_0_{k}": cparams[2],
+                    f"b_1_{k}": cparams[3],
+                    f"a_1_{k}": cparams[4],
+                    f"m_1_{k}": cparams[5],
+                    f"b_3_{k}": cparams[6],
+                    f"a_3_{k}": cparams[7],
+                    f"m_3_{k}": cparams[8],
+                    f"b_4_{k}": cparams[9],
+                    f"a_4_{k}": cparams[10],
+                    f"m_4_{k}": cparams[11],
                 }
-            elif component.name == "Silicates-ZDA04":
-                self.parameters["Silicates-ZDA04"] = {
-                    "A": cparams[0],
-                    "c_0": cparams[1],
-                    "b_0": cparams[2],
-                    "b_1": cparams[3],
-                    "a_1": cparams[4],
-                    "m_1": cparams[5],
-                    "b_3": cparams[6],
-                    "a_3": cparams[7],
-                    "m_3": cparams[8],
-                    "b_4": cparams[9],
-                    "a_4": cparams[10],
-                    "m_4": cparams[11],
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[12]
+
+            elif component.name == "Silicates-DL84":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
+                    f"c_0_{k}": cparams[1],
+                    f"b_0_{k}": cparams[2],
+                    f"b_1_{k}": cparams[3],
+                    f"a_1_{k}": cparams[4],
+                    f"m_1_{k}": cparams[5],
+                    f"b_3_{k}": cparams[6],
+                    f"a_3_{k}": cparams[7],
+                    f"m_3_{k}": cparams[8],
+                    f"b_4_{k}": cparams[9],
+                    f"a_4_{k}": cparams[10],
+                    f"m_4_{k}": cparams[11],
                 }
-            elif component.name == "ACH2-ZDA04":
-                self.parameters["ACH2-ZDA04"] = {
-                    "A": cparams[0],
-                    "c_0": cparams[1],
-                    "b_0": cparams[2],
-                    "b_1": cparams[3],
-                    "a_1": cparams[4],
-                    "m_1": cparams[5],
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[12]
+
+            elif component.name == "amC-ACH2-Z96":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
+                    f"c_0_{k}": cparams[1],
+                    f"b_0_{k}": cparams[2],
+                    f"b_1_{k}": cparams[3],
+                    f"a_1_{k}": cparams[4],
+                    f"m_1_{k}": cparams[5],
                 }
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
+
             elif component.name == "Silicates1-ZDA04":
                 self.parameters["Silicates1-ZDA04"] = {
                     "A": cparams[0],
@@ -1647,6 +1710,9 @@ class ZDA04DustModel(DustModel):
                     "a_1": cparams[4],
                     "m_1": cparams[5],
                 }
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
+
             elif component.name == "Silicates2-ZDA04":
                 self.parameters["Silicates2-ZDA04"] = {
                     "A": cparams[0],
@@ -1659,6 +1725,9 @@ class ZDA04DustModel(DustModel):
                     "a_2": cparams[7],
                     "m_2": cparams[8],
                 }
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[9]
+
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
 
@@ -1695,12 +1764,9 @@ class ZDA04DustModel(DustModel):
             # keep the normalization always positive
             if cparams[0] < 0:
                 lnp_bound = -np.inf
-            if component.name != "PAH-ZDA04":
+            if component.name != "Carbonaceous-LD01":
                 if cparams[4] <= 0.0:
                     lnp_bound = -np.inf
-
-        if not (0.25 <= params[-1] <= 20):
-            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1726,24 +1792,25 @@ class HD23DustModel(DustModel):
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
-            for component in self.components:
-                if component.name == "Carbonaceous-HD23":
-                    self.n_params.append(2)
-                    self.parameters["Carbonaceous-HD23"] = {
+            for i, component in enumerate(self.components):
+                if component.name == "Carbonaceous-DL07":
+                    n = 2
+                    self.parameters[component.name] = {
                         "B_1": 7.52e-7 / (3.24e-22),
                         "B_2": 8.09e-10 / (3.24e-22),
                     }
-                    self.deltas["Carbonaceous-HD23"] = {
+                    self.deltas[component.name] = {
                         "B_1": [1e12, 1e17],
-                        "B_2": [0, 1e14],
+                        "B_2": [1e9, 1e14],
                     }
-                    self.logs["Carbonaceous-HD23"] = {
+                    self.logs[component.name] = {
                         "B_1": True,
                         "B_2": True,
                     }
-                elif component.name == "AstroDust-HD23":
-                    self.n_params.append(9)
-                    self.parameters["AstroDust-HD23"] = {
+
+                elif component.name == "AstroDust-DH21":
+                    n = 9
+                    self.parameters[component.name] = {
                         "B_ad": 3.312432756747526242e-10 / (3.24e-22),
                         "a_0": 63.80845916490116565,
                         "sigma_ad": 0.3525536658924082190,
@@ -1754,7 +1821,7 @@ class HD23DustModel(DustModel):
                         "A_4": 7.963246509606041607e-3,
                         "A_5": -1.680451603515705633e-3,
                     }
-                    self.deltas["AstroDust-HD23"] = {
+                    self.deltas[component.name] = {
                         "B_ad": [1e9, 1e14],
                         "a_0": [10, 500],
                         "sigma_ad": [0.01, 1.0],
@@ -1765,7 +1832,7 @@ class HD23DustModel(DustModel):
                         "A_4": [-0.5, 0.5],
                         "A_5": [-0.1, 0.1],
                     }
-                    self.logs["AstroDust-HD23"] = {
+                    self.logs[component.name] = {
                         "B_ad": True,
                         "a_0": True,
                         "sigma_ad": False,
@@ -1776,11 +1843,18 @@ class HD23DustModel(DustModel):
                         "A_4": False,
                         "A_5": False,
                     }
+
                 else:
                     raise ValueError(
                         "%s grain material note supported for this size distribution"
                         % component.name
                     )
+                
+                if self.fluffy_grains:
+                    n += 1
+                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                self.n_params.append(n)
+                
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -1806,7 +1880,7 @@ class HD23DustModel(DustModel):
         sigma = 0.4
 
         if len(params) == 2:
-            B_1, B_2 = params
+            B_1, B_2 = params[:2]
             B_ad = None
             a_01 = 4.0
             a_02 = 30
@@ -1831,12 +1905,12 @@ class HD23DustModel(DustModel):
                 exponent += A[i + 1] * (np.power(np.log(a), (i + 1)))
             sizedist += (A[0] / (1e-8 * a)) * np.exp(exponent)
 
-        if composition == "Carbonaceous-HD23":
+        if composition == "Carbonaceous-DL07":
             (indxs,) = np.where(np.logical_or(a < 4, a > 1e3))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "AstroDust-HD23":
+        if composition == "AstroDust-DH21":
             (indxs,) = np.where(np.logical_or(a < 4.5, a > 5e4))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
@@ -1857,13 +1931,16 @@ class HD23DustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "Carbonaceous-HD23":
-                self.parameters["Carbonaceous-HD23"] = {
+            if component.name == "Carbonaceous-DL07":
+                self.parameters[component.name] = {
                     "B_1": cparams[0],
                     "B_2": cparams[1],
                 }
-            elif component.name == "AstroDust-HD23":
-                self.parameters["AstroDust-HD23"] = {
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[2]
+
+            elif component.name == "AstroDust-DH21":
+                self.parameters[component.name] = {
                     "B_ad": cparams[0],
                     "a_0": cparams[1],
                     "sigma_ad": cparams[2],
@@ -1874,6 +1951,9 @@ class HD23DustModel(DustModel):
                     "A_4": cparams[7],
                     "A_5": cparams[8],
                 }
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[9]
+
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
 
@@ -1907,14 +1987,14 @@ class HD23DustModel(DustModel):
             cparams = params[k1:k2]
             k1 += dustmodel.n_params[k]
 
-            if component.name == "Carbonaceous-HD23":
+            if component.name == "Carbonaceous-DL07":
                 # keep the normalization always positive
                 if cparams[0] < 0.0:
                     lnp_bound = -np.inf
                 if cparams[1] < 0.0:
                     lnp_bound = -np.inf
 
-            elif component.name == "AstroDust-HD23":
+            elif component.name == "AstroDust-DH21":
                 if cparams[0] < 0.0:
                     lnp_bound = -np.inf
                 if cparams[3] < 0.0:
@@ -1923,9 +2003,6 @@ class HD23DustModel(DustModel):
                     lnp_bound = -np.inf
                 if cparams[2] > 0.8:
                     lnp_bound = -np.inf
-
-        if not (0.25 <= params[-1] <= 20):
-            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
@@ -1951,69 +2028,78 @@ class Y24DustModel(DustModel):
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
-            for component in self.components:
-                if component.name == "a-C-Y24":
-                    self.n_params.append(5)
-                    self.parameters["a-C-Y24"] = {
-                        "A": 1.3412712e-18 / (5.34e-22),
+            for i, component in enumerate(self.components):
+                if component.name == "a-C-J16":
+                    n = 5
+                    self.parameters[component.name] = {
+                        f"A_{i}": 1.3412712e-18 / (5.34e-22),
                         "alpha": -5,
                         "a_C": 0.05,
                         "a_t": 0.01,
                         "gamma": 1,
                     }
-                    self.deltas["a-C-Y24"] = {
-                        "A": [1e2, 1e5],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e2, 1e5],
                         "alpha": [-10, 0],
                         "a_C": [0.0001, 0.5],
                         "a_t": [0, 0.2],
                         "gamma": [0, 5],
                     }
-                    self.logs["a-C-Y24"] = {
-                        "A": True,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
                         "alpha": False,
                         "a_C": False,
                         "a_t": False,
                         "gamma": False,
                     }
-                elif component.name == "a-C:H-Y24":
-                    self.n_params.append(3)
-                    self.parameters["a-C:H-Y24"] = {
-                        "A": 3.1841239e-9 / (5.34e-22),
-                        "a_0": 6.195341e-3,
-                        "sigma": 1.315171,
+
+                elif component.name == "a-C:H-J16":
+                    n = 3
+                    self.parameters[component.name] = {
+                        f"A_{i}": 3.1841239e-9 / (5.34e-22),
+                        f"a_0_{i}": 6.195341e-3,
+                        f"sigma_{i}": 1.315171,
                     }
-                    self.deltas["a-C:H-Y24"] = {
-                        "A": [1e10, 1e14],
-                        "a_0": [0, 0.5],
-                        "sigma": [0.5, 5.0],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e10, 1e14],
+                        f"a_0_{i}": [0, 0.5],
+                        f"sigma_{i}": [0.5, 5.0],
                     }
-                    self.logs["a-C:H-Y24"] = {
-                        "A": True,
-                        "a_0": False,
-                        "sigma": False,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
+                        f"a_0_{i}": False,
+                        f"sigma_{i}": False,
                     }
-                elif component.name == "aSil-2-Y24":
-                    self.n_params.append(3)
-                    self.parameters["aSil-2-Y24"] = {
-                        "A": 6.9843816e-6 / (5.34e-22),
-                        "a_0": 9.210816e-04,
-                        "sigma": 1.217290,
+
+                elif component.name == "aSil-2-D22":
+                    n = 3
+                    self.parameters[component.name] = {
+                        f"A_{i}": 6.9843816e-6 / (5.34e-22),
+                        f"a_0_{i}": 9.210816e-04,
+                        f"sigma_{i}": 1.217290,
                     }
-                    self.deltas["aSil-2-Y24"] = {
-                        "A": [1e14, 1e18],
-                        "a_0": [0, 0.5],
-                        "sigma": [0.5, 5.0],
+                    self.deltas[component.name] = {
+                        f"A_{i}": [1e14, 1e18],
+                        f"a_0_{i}": [0, 0.5],
+                        f"sigma_{i}": [0.5, 5.0],
                     }
-                    self.logs["aSil-2-Y24"] = {
-                        "A": True,
-                        "a_0": False,
-                        "sigma": False,
+                    self.logs[component.name] = {
+                        f"A_{i}": True,
+                        f"a_0_{i}": False,
+                        f"sigma_{i}": False,
                     }
+
                 else:
                     raise ValueError(
                         "%s grain material note supported for this size distribution"
                         % component.name
                     )
+                
+                if self.fluffy_grains:
+                    n += 1
+                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                self.n_params.append(n)
+                
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -2038,11 +2124,11 @@ class Y24DustModel(DustModel):
         a = x * 1e4
 
         if len(params) == 5:
-            A, alpha, a_C, a_t, gamma = params
+            A, alpha, a_C, a_t, gamma = params[:5]
             sigma = None
 
         else:
-            A, a_0, sigma = params
+            A, a_0, sigma = params[:3]
 
         if sigma is not None:
             sizedist = (A / a) * np.exp(
@@ -2061,17 +2147,17 @@ class Y24DustModel(DustModel):
 
             sizedist = np.concatenate((small, large))
 
-        if composition == "a-C:H-Y24":
+        if composition == "a-C:H-J16":
             (indxs,) = np.where(np.logical_or(a < 0.04495579, a > 0.7))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "aSil-2-Y24":
+        if composition == "aSil-2-D22":
             (indxs,) = np.where(np.logical_or(a < 0.011, a > 0.3737511))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "a-C-Y24":
+        if composition == "a-C-J16":
             (indxs,) = np.where(np.logical_or(a < 0.0004, a > 0.025))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
@@ -2092,26 +2178,35 @@ class Y24DustModel(DustModel):
             k2 = k1 + self.n_params[k]
             cparams = params[k1:k2]
             k1 += self.n_params[k]
-            if component.name == "a-C-Y24":
-                self.parameters["a-C-Y24"] = {
-                    "A": cparams[0],
+            if component.name == "a-C-J16":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
                     "alpha": cparams[1],
                     "a_C": cparams[2],
                     "a_t": cparams[3],
                     "gamma": cparams[4],
                 }
-            elif component.name == "a-C:H-Y24":
-                self.parameters["a-C:H-Y24"] = {
-                    "A": cparams[0],
-                    "a_0": cparams[1],
-                    "sigma": cparams[2],
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[5]
+
+            elif component.name == "a-C:H-J16":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
+                    f"a_0_{k}": cparams[1],
+                    f"sigma_{k}": cparams[2],
                 }
-            elif component.name == "aSil-2-Y24":
-                self.parameters["aSil-2-Y24"] = {
-                    "A": cparams[0],
-                    "a_0": cparams[1],
-                    "sigma": cparams[2],
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[3]
+
+            elif component.name == "aSil-2-D22":
+                self.parameters[component.name] = {
+                    f"A_{k}": cparams[0],
+                    f"a_0_{k}": cparams[1],
+                    f"sigma_{k}": cparams[2],
                 }
+                if self.fluffy_grains:
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[3]
+
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
 
@@ -2149,18 +2244,15 @@ class Y24DustModel(DustModel):
             if cparams[0] < 0.0:
                 lnp_bound = -np.inf
 
-            if component.name == "a-C-Y24":
+            if component.name == "a-C-J16":
                 if cparams[2] <= 0:
                     lnp_bound = -np.inf
                 if cparams[3] <= 0:
                     lnp_bound = -np.inf
 
-            elif component.name in ["aSil-2-Y24", "a-C:H-Y24"]:
+            elif component.name in ["aSil-2-D22", "a-C:H-J16"]:
                 if cparams[1] <= 0:
                     lnp_bound = -np.inf
-
-        if not (0.25 <= params[-1] <= 20):
-            lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound

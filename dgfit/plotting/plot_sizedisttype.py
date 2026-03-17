@@ -64,32 +64,32 @@ def main():
 
     if args.composition == "Carbon":
         composition = [
-            "astro-carbonaceous-WD01",
-            "PAH-ZDA04",
-            "Graphite-ZDA04",
-            "ACH2-ZDA04",
-            "Carbonaceous-HD23",
-            "a-C-Y24",
-            "a-C:H-Y24",
+            "Carbonaceous-LD01",
+            "Graphite-LD93",
+            "Carbonaceous-DL07",
+            "amC-ACH2-Z96",
+            "amC-BE-Z96",
+            "amC-ACAR-Z96",
+            "a-C-J16",
+            "a-C:H-J16",
         ]
 
     else:
         composition = [
-            "astro-silicates-WD01",
-            "Silicates-ZDA04",
-            "AstroDust-HD23",
-            "aSil-2-Y24",
+            "Silicates-DL84",
+            "AstroDust-DH21",
+            "aSil-2-D22",
         ]
 
     # get the dust model on the full wavelength grid
     compnames = set_grains_for_fitting(composition)
     ref = importlib_resources.files("dgfit") / "data"
 
-    if "astro-silicates-WD01" in compnames or "astro-carbonaceous-WD01" in compnames:
+    if "Silicates-DL84" in compnames or "Carbonaceous-LD01" in compnames:
         WD_compnames = [
             name
             for name in compnames
-            if "astro-silicates-WD01" in name or "astro-carbonaceous-WD01" in name
+            if "Silicates-DL84" in name or "Carbonaceous-LD01" in name
         ]
         with importlib_resources.as_file(ref) as data_path:
             dustmodel_WD_full = DustModel(
@@ -103,8 +103,8 @@ def main():
         # set size distributions
         p0 = []
         for component in dustmodel_WD.components:
-            if component.name == "astro-silicates-WD01":
-                cparams = dustmodel_WD.parameters["astro-silicates-WD01"]
+            if component.name == "Silicates-DL84":
+                cparams = dustmodel_WD.parameters[component.name]
                 p0 += [
                     cparams["C_s"],
                     cparams["a_ts"],
@@ -112,7 +112,7 @@ def main():
                     cparams["beta_s"],
                 ]
             else:
-                cparams = dustmodel_WD.parameters["astro-carbonaceous-WD01"]
+                cparams = dustmodel_WD.parameters[component.name]
                 p0 += [
                     cparams["C_g"],
                     cparams["a_tg"],
@@ -151,16 +151,16 @@ def main():
 
     if (
         "PAH-ZDA04" in compnames
-        or "Graphite-ZDA04" in compnames
-        or "Silicates-ZDA04" in compnames
+        or "Graphite-LD93" in compnames
+        or "Silicates-DL84" in compnames
         or "ACH2-ZDA04" in compnames
     ):
         Z04_compnames = [
             name
             for name in compnames
             if "PAH-ZDA04" in name
-            or "Graphite-ZDA04" in name
-            or "Silicates-ZDA04" in name
+            or "Graphite-LD93" in name
+            or "Silicates-DL84" in name
             or "ACH2-ZDA04" in name
         ]
         with importlib_resources.as_file(ref) as data_path:
@@ -176,7 +176,7 @@ def main():
         p0 = []
         for component in dustmodel_Z04.components:
             if component.name == "PAH-ZDA04":
-                cparams = dustmodel_Z04.parameters["PAH-ZDA04"]
+                cparams = dustmodel_Z04.parameters[component.name]
                 p0 += [
                     cparams["A"],
                     cparams["c_0"],
@@ -187,8 +187,8 @@ def main():
                     cparams["m_3"],
                 ]
 
-            elif component.name == "Graphite-ZDA04":
-                cparams = dustmodel_Z04.parameters["Graphite-ZDA04"]
+            elif component.name == "Graphite-LD93":
+                cparams = dustmodel_Z04.parameters[component.name]
                 p0 += [
                     cparams["A"],
                     cparams["c_0"],
@@ -204,8 +204,8 @@ def main():
                     cparams["m_4"],
                 ]
 
-            elif component.name == "Silicates-ZDA04":
-                cparams = dustmodel_Z04.parameters["Silicates-ZDA04"]
+            elif component.name == "Silicates-DL84":
+                cparams = dustmodel_Z04.parameters[component.name]
                 p0 += [
                     cparams["A"],
                     cparams["c_0"],
@@ -222,7 +222,7 @@ def main():
                 ]
 
             elif component.name == "ACH2-ZDA04":
-                cparams = dustmodel_Z04.parameters["ACH2-ZDA04"]
+                cparams = dustmodel_Z04.parameters[component.name]
                 p0 += [
                     cparams["A"],
                     cparams["c_0"],

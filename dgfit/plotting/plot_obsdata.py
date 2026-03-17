@@ -20,7 +20,7 @@ def main():
         "obsdata", type=str, default="none", help="give the file with the observed data"
     )
     parser.add_argument(
-        "--ISRF", type=str, default="none", help="Add the ISFR file to plot"
+        "--ISRF", nargs="+", default="none", help="Add the ISFR file to plot"
     )
     parser.add_argument(
         "--units",
@@ -168,17 +168,25 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             ax[0, 1].legend(loc=2)
 
     if ISRF != "none":
-        ref = importlib_resources.files("dgfit") / ISRF
-        with importlib_resources.as_file(ref) as data_path:
-            t = Table.read(str(data_path), format="ascii.commented_header")
-        ax[1, 1].plot(t["wave"], t["ISRF"], "-", label="ISRF", color="blue")
-        ax[1, 1].set_xlabel(r"$\lambda [\mu m]$")
-        ax[1, 1].set_ylabel(r"ISRF [$ergs$ $cm^{-3}$ $s^{-1}$ $sr^{-1}$]")
-        ax[1, 1].set_xscale("log")
-        ax[1, 1].set_yscale("log")
-        ax[1, 1].set_xlim(0.09, 1e1)
-        ax[1, 1].set_ylim(1e-2, 1e2)
-        ax[1, 1].legend()
+        colors = ["b", "r"]
+        i = 0
+        for field in ISRF:
+            ref = importlib_resources.files("dgfit") / field
+            with importlib_resources.as_file(ref) as data_path:
+                t = Table.read(str(data_path), format="ascii.commented_header")
+            waves = t["wave"]
+            if waves[0] < 0.001:
+                waves *= 1e4
+                t["ISRF"] *= 10
+            ax[1, 1].plot(waves, t["ISRF"], "-", label="ISRF", color=colors[i])
+            ax[1, 1].set_xlabel(r"$\lambda [\mu m]$")
+            ax[1, 1].set_ylabel(r"ISRF [$ergs$ $cm^{-3}$ $s^{-1}$ $sr^{-1}$]")
+            ax[1, 1].set_xscale("log")
+            ax[1, 1].set_yscale("log")
+            ax[1, 1].set_xlim(0.09, 1e1)
+            ax[1, 1].set_ylim(1e-2, 1e2)
+            ax[1, 1].legend()
+            i += 1
 
     if OD.fit_scat_a:
         ax[0, 2].errorbar(
