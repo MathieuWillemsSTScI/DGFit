@@ -3,6 +3,7 @@ import numpy as np
 import argparse
 import h5py
 
+
 def weighted_correlation_matrix(points, log_w):
     """
     points : (Nsamples, Nparams)
@@ -27,6 +28,7 @@ def weighted_correlation_matrix(points, log_w):
 
     return corr
 
+
 def plot_correlation_matrix(corr, labels, basename=None):
     N = len(labels)
 
@@ -37,18 +39,13 @@ def plot_correlation_matrix(corr, labels, basename=None):
 
     fig, ax = plt.subplots(figsize=(8, 7))
 
-    im = ax.imshow(
-        corr_masked,
-        vmin=-1,
-        vmax=1,
-        cmap="coolwarm"
-    )
+    im = ax.imshow(corr_masked, vmin=-1, vmax=1, cmap="coolwarm")
 
     # draw grid lines between cells
     ax.set_xticks(np.arange(-0.5, N, 1), minor=True)
     ax.set_yticks(np.arange(-0.5, N, 1), minor=True)
 
-    ax.grid(which="minor", color="black", linestyle='-', linewidth=0.5)
+    ax.grid(which="minor", color="black", linestyle="-", linewidth=0.5)
 
     ax.tick_params(which="minor", bottom=False, left=False)
 
@@ -60,8 +57,8 @@ def plot_correlation_matrix(corr, labels, basename=None):
     ax.set_yticklabels(labels)
 
     # remove grid above diagonal visually
-    ax.set_xlim(-0.5, N-0.5)
-    ax.set_ylim(N-0.5, -0.5)
+    ax.set_xlim(-0.5, N - 0.5)
+    ax.set_ylim(N - 0.5, -0.5)
 
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label("Correlation coefficient")
@@ -74,6 +71,7 @@ def plot_correlation_matrix(corr, labels, basename=None):
         fig.savefig(f"{basename}_correlation_triangle.png", dpi=200)
 
     plt.show()
+
 
 def correlated_params(corr, labels, threshold=0.5):
     """

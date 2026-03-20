@@ -104,7 +104,9 @@ def DGFit_cmdparser():
         "--chain", action="store_true", help="MCMC: Store the chain in an ascii file"
     )
     parser.add_argument(
-        "--limit_abund", action="store_true", help="Hard limit on size distribution based on abundances"
+        "--limit_abund",
+        action="store_true",
+        help="Hard limit on size distribution based on abundances",
     )
     parser.add_argument(
         "--usemin",
@@ -117,8 +119,14 @@ def DGFit_cmdparser():
     parser.add_argument(
         "-t", "--tag", default="GrainBow_test", help="basename to use for output files"
     )
-    parser.add_argument("--nolarge", action="store_true", help="Deweight sizes bigger than the cutoff size")
-    parser.add_argument("--cutoff", type=float, default=5.0, help="The cutoff size in micron")
+    parser.add_argument(
+        "--nolarge",
+        action="store_true",
+        help="Deweight sizes bigger than the cutoff size",
+    )
+    parser.add_argument(
+        "--cutoff", type=float, default=5.0, help="The cutoff size in micron"
+    )
     parser.add_argument(
         "--weight_by_average_unc",
         action="store_true",
@@ -153,16 +161,26 @@ def DGFit_cmdparser():
         help="Nautilus: Allows you to run in parallel",
     )
     parser.add_argument(
-        "--ncores", type=int, default=4, help="Nautilus: Number of cores to use if you run parallel"
+        "--ncores",
+        type=int,
+        default=4,
+        help="Nautilus: Number of cores to use if you run parallel",
     )
     parser.add_argument(
-        "--nlivepoints", type=int, default=2000, help="Nautilus: Number of live points to use"
+        "--nlivepoints",
+        type=int,
+        default=2000,
+        help="Nautilus: Number of live points to use",
     )
     parser.add_argument(
-        "--result_from_file", default="none", help="Nautilus: give the name of the file with the parameters"
+        "--result_from_file",
+        default="none",
+        help="Nautilus: give the name of the file with the parameters",
     )
     parser.add_argument(
-        "--fluffy_grains", action="store_true", help="Add an extra parameter to account for fluffy grains (porous & non-shperical)"
+        "--fluffy_grains",
+        action="store_true",
+        help="Add an extra parameter to account for fluffy grains (porous & non-shperical)",
     )
 
     return parser
@@ -260,12 +278,38 @@ PARAM_SPECS = {
         },
         "Graphite-LD93": {
             "use_factor": "factor_C",
-            "params": ["A", "c_0", "b_0", "b_1", "a_1", "m_1", "b_3", "a_3", "m_3", "b_4", "a_4", "m_4"],
+            "params": [
+                "A",
+                "c_0",
+                "b_0",
+                "b_1",
+                "a_1",
+                "m_1",
+                "b_3",
+                "a_3",
+                "m_3",
+                "b_4",
+                "a_4",
+                "m_4",
+            ],
             "indexed": True,
         },
         "Silicates-DL84": {
             "use_factor": "factor_sil",
-            "params": ["A", "c_0", "b_0", "b_1", "a_1", "m_1", "b_3", "a_3", "m_3", "b_4", "a_4", "m_4"],
+            "params": [
+                "A",
+                "c_0",
+                "b_0",
+                "b_1",
+                "a_1",
+                "m_1",
+                "b_3",
+                "a_3",
+                "m_3",
+                "b_4",
+                "a_4",
+                "m_4",
+            ],
             "indexed": True,
         },
         "amC-ACH2-Z96": {
@@ -282,7 +326,17 @@ PARAM_SPECS = {
         },
         "AstroDust-DH21": {
             "use_factor": "factor_sil",
-            "params": ["B_ad", "a_0", "sigma_ad", "A_0", "A_1", "A_2", "A_3", "A_4", "A_5"],
+            "params": [
+                "B_ad",
+                "a_0",
+                "sigma_ad",
+                "A_0",
+                "A_1",
+                "A_2",
+                "A_3",
+                "A_4",
+                "A_5",
+            ],
             "indexed": False,
         },
     },
@@ -314,8 +368,7 @@ PARAM_SPECS = {
             "params": ["A_s", "sigma_s", "a_s", "A_b", "sigma_b", "a_b"],
             "indexed": True,
         },
-    }
-
+    },
 }
 
 
@@ -323,24 +376,26 @@ PARAM_SPECS = {
 # GENERIC PARAMETER SETUP FUNCTION (replaces all 5 setparams_* functions)
 # ============================================================================
 
-def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF, 
-                      fluffy_grains, sizedisttype):
+
+def setparams_generic(
+    dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains, sizedisttype
+):
     """
     Generic parameter setup function for all size distribution types.
-    
-    Replaces setparams_MRN77, setparams_WD01, setparams_ZDA04, 
+
+    Replaces setparams_MRN77, setparams_WD01, setparams_ZDA04,
     setparams_HD23, and setparams_Y24.
     """
     pnames = []
     p0 = []
     deltas = []
     logs = []
-    
+
     specs = PARAM_SPECS.get(sizedisttype, {})
-    
+
     for i, component in enumerate(dustmodel.components):
         comp_name = component.name
-        
+
         # Get the spec for this component
         if comp_name in specs:
             spec = specs[comp_name]
@@ -349,23 +404,25 @@ def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF,
         elif "all_silicates" in specs and comp_name in dustmodel.silicate_names:
             spec = specs["all_silicates"]
         else:
-            raise ValueError(f"No parameter spec found for {comp_name} in {sizedisttype}")
-        
+            raise ValueError(
+                f"No parameter spec found for {comp_name} in {sizedisttype}"
+            )
+
         # Determine which factor to use for this component
         use_factor_name = spec["use_factor"]
         use_factor = factor_C if use_factor_name == "factor_C" else factor_sil
-        
+
         # Extract component parameters and deltas
         cparams = dustmodel.parameters[comp_name]
         cdeltas = dustmodel.deltas[comp_name]
         clogs = dustmodel.logs[comp_name]
-        
+
         # Check if parameters are indexed by component loop index
         is_indexed = spec.get("indexed", False)
-        
+
         # Build parameter list from spec
         param_keys = spec["params"]
-        
+
         for param_key in param_keys:
             # Construct actual parameter key (with indexing if needed)
             if is_indexed == "partial":
@@ -378,17 +435,17 @@ def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF,
                 actual_key = f"{param_key}_{i}"
             else:
                 actual_key = param_key
-            
+
             # Get value
             param_value = cparams[actual_key]
-            
+
             # Apply abundance factor correction if this is an amplitude parameter
             param_base = actual_key.split("_")[0]
             if param_base in ["A", "C", "B"]:
                 param_value = param_value / use_factor
-            
+
             p0.append(param_value)
-            
+
             # Get delta (prior range) with abundance factor correction
             delta_value = cdeltas[actual_key]
             if isinstance(delta_value, (list, tuple)):
@@ -397,11 +454,11 @@ def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF,
                 deltas.append(np.array(delta_value))
             else:
                 deltas.append(delta_value)
-            
+
             # Get log flag
             logs.append(clogs[actual_key])
             pnames.append(actual_key)
-        
+
         # Add fluffy grain parameter if enabled
         if fluffy_grains:
             fluffy_key = f"Fluff_{i}"
@@ -409,10 +466,10 @@ def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF,
                 p0.append(cparams[fluffy_key])
             else:
                 p0.append(1.0)
-            deltas.append(np.array([0.2, 1.0]))
+            deltas.append(np.array([0.3, 1.0]))
             logs.append(False)
             pnames.append(fluffy_key)
-    
+
     # Add ISRF parameter if enabled
     if ISRF:
         cparams = dustmodel.parameters["Radiation field"]
@@ -420,9 +477,8 @@ def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF,
         deltas.append(np.array([0.25, 20]))
         logs.append(False)
         pnames.append("RF")
-    
-    return p0, deltas, logs, pnames
 
+    return p0, deltas, logs, pnames
 
 
 def add_priors_nautilus(pnames, logs, deltas, prior):
@@ -441,9 +497,8 @@ def add_priors_nautilus(pnames, logs, deltas, prior):
                     f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
                 )
             else:
-                prior.add_parameter(
-                    f"{name}", dist=(deltas[i][0], deltas[i][1])
-                )
+                prior.add_parameter(f"{name}", dist=(deltas[i][0], deltas[i][1]))
+
 
 def main():
     parser = DGFit_cmdparser()
@@ -502,7 +557,7 @@ def main():
     ISRF = args.no_variable_ISRF
     fluffy_grains = args.fluffy_grains
     pnames = []
-    
+
     # Create the appropriate DustModel based on sizedisttype
     if sizedisttype == "MRN77":
         dustmodel = MRN77DustModel(
@@ -572,7 +627,7 @@ def main():
     else:
         print("Size distribution choice not known")
         exit()
-    
+
     # Setup parameters using generic function for non-bins cases
     if sizedisttype in ["MRN77", "WD01", "ZDA04", "HD23", "Y24", "lognormals"]:
         p0, deltas, logs, _pnames = setparams_generic(
@@ -584,7 +639,13 @@ def main():
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
             p0, deltas, logs, _pnames = setparams_generic(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains, sizedisttype
+                dustmodel,
+                obsdata,
+                factor_C,
+                factor_sil,
+                ISRF,
+                fluffy_grains,
+                sizedisttype,
             )
             dustmodel.set_size_dist(p0)
 
@@ -619,12 +680,16 @@ def main():
         for k in range(0, dustmodel.n_components):
             n_deweighted = 0
 
-            #Calculate the upper limit of the priors
+            # Calculate the upper limit of the priors
             n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
                     if dustmodel.components[k].sizes[kk] > (args.cutoff * 1e-4):
-                        print("Deweighting size", dustmodel.components[k].sizes[kk]*10000, "microns")
+                        print(
+                            "Deweighting size",
+                            dustmodel.components[k].sizes[kk] * 10000,
+                            "microns",
+                        )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
                         p0.append(0)
                         lowers.append(0)
@@ -632,12 +697,18 @@ def main():
                         n_deweighted += 1
                         continue
 
-                pnames += [f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk]*10000, decimals=5)}"]
+                pnames += [
+                    f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk]*10000, decimals=5)}"
+                ]
                 upper = n_grains[kk]
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1e5
-                upper *= 1 + (eps * (k + kk + 1))       #making sure the prior limits are not exactly the same, to avoid correlations that are not there
+                upper *= 1 + (
+                    eps * (k + kk + 1)
+                )  # making sure the prior limits are not exactly the same, to avoid correlations that are not there
                 lower *= 1 - (eps * (k + kk + 1))
-                prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper))
+                prior.add_parameter(
+                    f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
+                )
                 p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
                 lowers.append(lower)
                 uppers.append(upper)
@@ -659,7 +730,9 @@ def main():
             uppers.append(30)
 
         dustmodel.set_size_dist(p0)
-        np.savetxt(f"priors_{args.tag}.txt", np.column_stack((uppers, lowers)), fmt="%.10e")        #Save priors to a file
+        np.savetxt(
+            f"priors_{args.tag}.txt", np.column_stack((uppers, lowers)), fmt="%.10e"
+        )  # Save priors to a file
 
     else:
         print("Size distribution choice not known")
@@ -670,27 +743,42 @@ def main():
 
     # setup time
     setup_time = time.process_time()
-    print("Setup time taken: ", np.round((setup_time - start_time) / 60.0, decimals=3), " min")
+    print(
+        "Setup time taken: ",
+        np.round((setup_time - start_time) / 60.0, decimals=3),
+        " min",
+    )
 
     if args.fitting_package == "nautilus":
 
         def loglike(a):
             x = np.array(list(a.values()))
             return dustmodel.lnprob(x, obsdata, dustmodel)
-        
+
         if args.result_from_file == "none":
 
             if args.parallel:
                 sampler = Sampler(
-                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5", pool=args.ncores
+                    prior,
+                    loglike,
+                    n_live=args.nlivepoints,
+                    filepath=f"checkpoint_{basename}_sizedist.hdf5",
+                    pool=args.ncores,
                 )
             else:
                 sampler = Sampler(
-                    prior, loglike, n_live=args.nlivepoints, filepath=f"checkpoint_{basename}_sizedist.hdf5"
+                    prior,
+                    loglike,
+                    n_live=args.nlivepoints,
+                    filepath=f"checkpoint_{basename}_sizedist.hdf5",
                 )
             sampler.run(verbose=True)
             opt_time = time.process_time()
-            print("Optimizer time taken: ", np.round((opt_time - setup_time) / 60.0, decimals=2), " min")
+            print(
+                "Optimizer time taken: ",
+                np.round((opt_time - setup_time) / 60.0, decimals=2),
+                " min",
+            )
             print(f"Evidence: {sampler.log_z}")
 
             points, log_w, log_l = sampler.posterior()
@@ -700,8 +788,8 @@ def main():
 
             with h5py.File(f"posterior_samples_{args.tag}.h5", "w") as f:
                 f["points"] = points
-                f["log_w"]  = log_w
-                f["log_l"]  = log_l
+                f["log_w"] = log_w
+                f["log_l"] = log_l
                 f["labels"] = pnames
 
             if args.cornerplot:
@@ -730,7 +818,7 @@ def main():
                     corner.overplot_lines(fig, opt_subset, color="red")
                     plt.show()
                     plt.close(fig)
-            
+
         else:
             x_max = np.loadtxt(f"{args.result_from_file}")
             opt = np.array(x_max)
@@ -741,7 +829,7 @@ def main():
             for i, value in enumerate(uppers):
                 if value != 0:
                     k = i - p
-                    opt_params[i] = (lowers[i] * (uppers[i]/lowers[i])**opt[k])
+                    opt_params[i] = lowers[i] * (uppers[i] / lowers[i]) ** opt[k]
                 else:
                     opt_params[i] = 0
                     p += 1

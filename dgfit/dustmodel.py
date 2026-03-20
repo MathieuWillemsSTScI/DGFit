@@ -93,7 +93,8 @@ class DustModel(object):
             "amC-BE-Z96",
             "amC-ACAR-Z96",
             "a-C-J16",
-            "a-C:H-J16"]
+            "a-C:H-J16",
+        ]
         self.silicate_names = [
             "Silicates-DL84",
             "AstroDust-DH21",
@@ -482,7 +483,7 @@ class DustModel(object):
         lnp = lnp_alav + lnp_dep + lnp_emission + lnp_albedo + lnp_g
         if math.isinf(lnp) | math.isnan(lnp):
             return -np.inf
-        
+
         fit_weights = [
             lnp_alav,
             lnp_dep,
@@ -490,7 +491,7 @@ class DustModel(object):
             lnp_albedo,
             lnp_g,
             lnp,
-            total_points
+            total_points,
         ]
         self.fracs = fit_weights
         return lnp
@@ -526,14 +527,18 @@ class DustModel(object):
 
         if dustmodel.regularization:
             delta = 0
-            for component in dustmodel.components:  # regularization, puts a bound on the difference between size bins depending on the width of the bin
+            for (
+                component
+            ) in (
+                dustmodel.components
+            ):  # regularization, puts a bound on the difference between size bins depending on the width of the bin
                 n_params = len(component.sizes)
                 small = params[0 + delta : n_params - 1 + delta]
                 big = params[1 + delta : n_params + delta]
                 small_sizes = component.sizes[0 : n_params - 1]
                 big_sizes = component.sizes[1:n_params]
 
-                mask = (big > 0)
+                mask = big > 0
                 small = small[mask]
                 big = big[mask]
                 small_sizes = small_sizes[mask]
@@ -696,7 +701,9 @@ class DustModel(object):
 
         for k, component in enumerate(self.components):
             results = component.eff_grain_props(OD, predict_all=True)
-            result_contribution = component.calculate_contribution_per_size(OD, predict_all=True)
+            result_contribution = component.calculate_contribution_per_size(
+                OD, predict_all=True
+            )
             tcabs = results["cabs"]
             tcsca = results["csca"]
             cabs_per_size = result_contribution["cabs"]
@@ -726,8 +733,8 @@ class DustModel(object):
             hdu.header["EXTNAME"] = f"EXTSIZE_{component.name}"
             hdulist.append(hdu)
             meta_cols = [
-            fits.Column(name="SIZE", format="E", array=component.sizes),
-            fits.Column(name="WAVE", format="E", array=component.wavelengths),
+                fits.Column(name="SIZE", format="E", array=component.sizes),
+                fits.Column(name="WAVE", format="E", array=component.wavelengths),
             ]
             meta_hdu = fits.BinTableHDU.from_columns(meta_cols)
             meta_hdu.header["EXTNAME"] = f"EXTSIZE_META_{component.name}"
@@ -1109,12 +1116,12 @@ class WD01DustModel(DustModel):
                     raise ValueError(
                         "%s grain material note supported" % component.name
                     )
-                
+
                 if self.fluffy_grains:
                     n += 1
                     self.parameters[component.name][f"Fluff_{i}"] = 1
                 self.n_params.append(n)
-                
+
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -1242,7 +1249,7 @@ class WD01DustModel(DustModel):
                     "b_C": cparams[5],
                 }
                 if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"]  = cparams[6]
+                    self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -1317,7 +1324,8 @@ class ZDA04DustModel(DustModel):
                 if component.name == "Carbonaceous-LD01":
                     n = 7
                     self.parameters[component.name] = {  # ACH2 model /// Graphite model
-                        f"A_{i}": 2.484404e-3 / (5.34e-22),  # 4.727727e-3 /// 2.484404e-3
+                        f"A_{i}": 2.484404e-3
+                        / (5.34e-22),  # 4.727727e-3 /// 2.484404e-3
                         f"c_0_{i}": -8.54571,  # -8.91244 /// -8.54571
                         f"b_0_{i}": -3.60112,  # -3.72015 /// -3.60112
                         f"b_1_{i}": 1.86525e5,  # 6.78215e5 /// 1.86525e5
@@ -1466,7 +1474,7 @@ class ZDA04DustModel(DustModel):
                         "%s grain material note supported for this size distribution"
                         % component.name
                     )
-                
+
                 if self.fluffy_grains:
                     n += 1
                     self.parameters[component.name][f"Fluff_{i}"] = 1
@@ -1750,12 +1758,12 @@ class HD23DustModel(DustModel):
                         "%s grain material note supported for this size distribution"
                         % component.name
                     )
-                
+
                 if self.fluffy_grains:
                     n += 1
                     self.parameters[component.name][f"Fluff_{i}"] = 1
                 self.n_params.append(n)
-                
+
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -1995,12 +2003,12 @@ class Y24DustModel(DustModel):
                         "%s grain material note supported for this size distribution"
                         % component.name
                     )
-                
+
                 if self.fluffy_grains:
                     n += 1
                     self.parameters[component.name][f"Fluff_{i}"] = 1
                 self.n_params.append(n)
-                
+
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -2168,6 +2176,7 @@ class Lognormal(DustModel):
 
     Same kewyords and attributes as the parent DustModel class.
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sizedisttype = "lognormals"
@@ -2178,14 +2187,16 @@ class Lognormal(DustModel):
             a = 1
             for i, component in enumerate(self.components):
                 n = 6
-                sizes = component.sizes * 1e4  # input grain sizes are in cm, needed in microns
+                sizes = (
+                    component.sizes * 1e4
+                )  # input grain sizes are in cm, needed in microns
                 n_sizes = len(sizes)
                 cutoff = n_sizes // 10
                 middle = n_sizes // 2
                 start_mid = middle // 2
                 if component.name in self.silicate_names:
                     a = 10
-                
+
                 self.parameters[component.name] = {
                     f"A_s_{i}": 5e17 / a,
                     f"sigma_s_{i}": 0.5,
@@ -2195,12 +2206,12 @@ class Lognormal(DustModel):
                     f"a_b_{i}": sizes[middle + cutoff],
                 }
                 self.deltas[component.name] = {
-                    f"A_s_{i}": [1e13, 5e19],
+                    f"A_s_{i}": [5e12, 5e19],
                     f"sigma_s_{i}": [0, 10.0],
                     f"a_s_{i}": [sizes[0], sizes[start_mid]],
-                    f"A_b_{i}": [1e4, 2e10],
-                    f"sigma_b_{i}": [0, 10.00001],
-                    f"a_b_{i}": [sizes[start_mid + 1], sizes[-1]],
+                    f"A_b_{i}": [1e3, 1e10],
+                    f"sigma_b_{i}": [0, 15],
+                    f"a_b_{i}": [sizes[0], sizes[-1]],
                 }
                 self.logs[component.name] = {
                     f"A_s_{i}": True,
@@ -2214,7 +2225,7 @@ class Lognormal(DustModel):
                     n += 1
                     self.parameters[component.name][f"Fluff_{i}"] = 1
                 self.n_params.append(n)
-                
+
             if self.variable_ISRF:
                 self.n_params.append(1)
                 self.parameters["Radiation field"] = {"RF": self.start_ISRF}
@@ -2242,11 +2253,12 @@ class Lognormal(DustModel):
 
         sizedist = (A_s / (sigma_s * a)) * np.exp(
             -np.power(np.log(a / a_s), 2) / (2 * np.power(sigma_s, 2))
-            ) + (A_b / (sigma_b * a)) * np.exp(
-            -np.power(np.log(a / a_b), 2) / (2 * np.power(sigma_b, 2)))
-        
+        ) + (A_b / (sigma_b * a)) * np.exp(
+            -np.power(np.log(a / a_b), 2) / (2 * np.power(sigma_b, 2))
+        )
+
         return sizedist
-    
+
     def set_size_dist_parameters(self, params):
         """
         Set the size distribution parameters in the object dictonary.
@@ -2306,7 +2318,10 @@ class Lognormal(DustModel):
             k1 += dustmodel.n_params[k]
 
             # keep the normalization always positive
-            if any (cparams[i] < 0.0 for i in range(0, 6)):
+            if any(cparams[i] < 0.0 for i in range(0, 6)):
+                lnp_bound = -np.inf
+
+            if params[5] <= params[2]:
                 lnp_bound = -np.inf
 
         if lnp_bound < 0.0:

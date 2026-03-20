@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 from matplotlib.colors import LogNorm
 
+
 def plot_extinction(fits_filename, show_per_size=False, component_names=None):
     """
     Plot total extinction, per-component extinction, and optionally per-size extinction.
@@ -21,10 +22,11 @@ def plot_extinction(fits_filename, show_per_size=False, component_names=None):
 
     hdul = fits.open(fits_filename)
     extsize_hdus = [
-    h for h in hdul 
-    if h.header.get("EXTNAME", "").startswith("EXTSIZE_") 
-    and not h.header.get("EXTNAME", "").startswith("EXTSIZE_META_")
-]
+        h
+        for h in hdul
+        if h.header.get("EXTNAME", "").startswith("EXTSIZE_")
+        and not h.header.get("EXTNAME", "").startswith("EXTSIZE_META_")
+    ]
 
     # collect total extinction per component
     total_per_component = {}
@@ -46,12 +48,20 @@ def plot_extinction(fits_filename, show_per_size=False, component_names=None):
     total_extinction = sum(total_per_component.values())
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(wavelengths, total_extinction, color='black', lw=2, label="Total Extinction")
+    ax.plot(
+        wavelengths, total_extinction, color="black", lw=2, label="Total Extinction"
+    )
 
     # per-component extinction
     colors = plt.cm.tab10.colors
     for i, (comp_name, comp_ext) in enumerate(total_per_component.items()):
-        ax.plot(wavelengths, comp_ext, color=colors[i % len(colors)], lw=1.5, label=f"{comp_name}")
+        ax.plot(
+            wavelengths,
+            comp_ext,
+            color=colors[i % len(colors)],
+            lw=1.5,
+            label=f"{comp_name}",
+        )
 
     if show_per_size:
         if isinstance(show_per_size, dict):
@@ -59,8 +69,10 @@ def plot_extinction(fits_filename, show_per_size=False, component_names=None):
         elif component_names is not None:
             selected_components = component_names
         else:
-            selected_components = [hdu.header["EXTNAME"].replace("EXTSIZE_", "") for hdu in extsize_hdus]
-        
+            selected_components = [
+                hdu.header["EXTNAME"].replace("EXTSIZE_", "") for hdu in extsize_hdus
+            ]
+
         for hdu in extsize_hdus:
             comp_name = hdu.header["EXTNAME"].replace("EXTSIZE_", "")
             if comp_name not in selected_components:
@@ -74,23 +86,29 @@ def plot_extinction(fits_filename, show_per_size=False, component_names=None):
             norm = LogNorm(vmin=sizes.min(), vmax=sizes.max())
             cmap = plt.cm.gist_rainbow
             for size_idx in range(data.shape[0]):
-                ax.plot(wavelengths, data[size_idx, :], color=cmap(norm(sizes[size_idx])),
-                        lw=0.8, alpha=0.8)
+                ax.plot(
+                    wavelengths,
+                    data[size_idx, :],
+                    color=cmap(norm(sizes[size_idx])),
+                    lw=0.8,
+                    alpha=0.8,
+                )
 
     # add colorbar
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=ax, pad=0.02)
     cbar.set_label("Grain size [μm]")
-            
+
     ax.set_xlabel("Wavelength [μm]")
     ax.set_ylabel("A(λ)/A(V)")
     ax.set_ylim(1e-4, 10)
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=3)
     plt.tight_layout()
     plt.show()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -105,7 +123,10 @@ def main():
 
     args = parser.parse_args()
 
-    plot_extinction(args.filename, show_per_size=True, component_names="astro-carbonaceous-WD01")
+    plot_extinction(
+        args.filename, show_per_size=True, component_names="astro-carbonaceous-WD01"
+    )
+
 
 if __name__ == "__main__":
     main()

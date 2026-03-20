@@ -100,8 +100,8 @@ def plot_dgfit_sizedist(
         if file != "none":
             length = len(xvals)
             uppers, lowers = np.loadtxt(file, unpack=True)
-            comp_lower = lowers[j:j+length] * (hdu.data["SIZE"] ** 3)
-            comp_upper = uppers[j:j+length] * (hdu.data["SIZE"] ** 3)
+            comp_lower = lowers[j : j + length] * (hdu.data["SIZE"] ** 3)
+            comp_upper = uppers[j : j + length] * (hdu.data["SIZE"] ** 3)
             ax.fill_between(
                 xvals,
                 comp_lower,
@@ -424,7 +424,7 @@ def main():
         mass=True,
         plegend=True,
         markers=args.markeverynth,
-        file=args.priorfile
+        file=args.priorfile,
     )
 
     # plot the abundances
@@ -466,9 +466,7 @@ def main():
             alpha=0.50,
             markers=args.markeverynth,
         )
-        plot_dgfit_abundances(
-            ax[0, 1], hdulist2, OD, fontsize=fontsize, color="c"
-        )
+        plot_dgfit_abundances(ax[0, 1], hdulist2, OD, fontsize=fontsize, color="c")
         plot_dgfit_extinction(
             ax[1, 0], hdulist2["EXTINCTION"], OD, fontsize=fontsize, ltype="--"
         )

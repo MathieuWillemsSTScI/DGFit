@@ -363,14 +363,30 @@ class DustGrains(object):
         self.scat_g_csca = np.empty((self.n_sizes, self.n_wavelengths_scat_g))
 
         # loop over the sizes and generate grain info on the observed data grid
-        self.cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(self.wavelengths)
-        self.cabs = interp1d(DustGrain.wavelengths, DustGrain.cabs, axis=1)(self.wavelengths)
-        self.csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(self.wavelengths)
-        self.scat_a_cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(self.wavelengths_scat_a)
-        self.scat_a_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(self.wavelengths_scat_a)
-        self.scat_g = interp1d(DustGrain.wavelengths, DustGrain.scat_g, axis=1)(self.wavelengths_scat_g)
-        self.scat_g_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(self.wavelengths_scat_g)
-        self.emission = interp1d(DustGrain.wavelengths_emission, DustGrain.emission, axis=2)(self.wavelengths_emission)
+        self.cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(
+            self.wavelengths
+        )
+        self.cabs = interp1d(DustGrain.wavelengths, DustGrain.cabs, axis=1)(
+            self.wavelengths
+        )
+        self.csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(
+            self.wavelengths
+        )
+        self.scat_a_cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(
+            self.wavelengths_scat_a
+        )
+        self.scat_a_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(
+            self.wavelengths_scat_a
+        )
+        self.scat_g = interp1d(DustGrain.wavelengths, DustGrain.scat_g, axis=1)(
+            self.wavelengths_scat_g
+        )
+        self.scat_g_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(
+            self.wavelengths_scat_g
+        )
+        self.emission = interp1d(
+            DustGrain.wavelengths_emission, DustGrain.emission, axis=2
+        )(self.wavelengths_emission)
 
     def eff_grain_props(self, ObsData, predict_all=False):
         """
@@ -424,13 +440,23 @@ class DustGrains(object):
         sizedist1 = self.size_dist[0 : self.n_sizes - 1]
         sizedist2 = self.size_dist[1 : self.n_sizes]
         _effcabs = np.sum(
-                deltas[:, None] * (self.cabs[:-1, :] * sizedist1[:, None] + self.cabs[1:, :] * sizedist2[:, None]), axis=0
+            deltas[:, None]
+            * (
+                self.cabs[:-1, :] * sizedist1[:, None]
+                + self.cabs[1:, :] * sizedist2[:, None]
+            ),
+            axis=0,
         )
         _effcsca = np.sum(
-                deltas[:, None] * (self.csca[:-1, :] * sizedist1[:, None] + self.csca[1:, :] * sizedist2[:, None]), axis=0
+            deltas[:, None]
+            * (
+                self.csca[:-1, :] * sizedist1[:, None]
+                + self.csca[1:, :] * sizedist2[:, None]
+            ),
+            axis=0,
         )
 
-            # *not* faster to use numexpr (tested in 2015)
+        # *not* faster to use numexpr (tested in 2015)
 
         results["cabs"] = _effcabs
         results["csca"] = _effcsca
@@ -589,7 +615,7 @@ class DustGrains(object):
                         )
                     )
                 )
-            
+
             _natoms[i] *= self.fluffy_grain_factor
 
         results["natoms"] = dict(zip(self.atomic_comp_names, _natoms))
@@ -706,7 +732,7 @@ class DustGrains(object):
         emission = interpolation(ISRF)
 
         return emission
-    
+
     def calculate_contribution_per_size(self, ObsData, predict_all=False):
         # output is a dictonary
         results = {}
@@ -717,7 +743,7 @@ class DustGrains(object):
 
         # reshape size weights for broadcasting
         corrected_sd = self.size_dist * delta
-        weights = corrected_sd[:, None]   # (n_sizes, 1)
+        weights = corrected_sd[:, None]  # (n_sizes, 1)
 
         _effcabs = self.cabs * weights
         _effcsca = self.csca * weights
@@ -730,7 +756,7 @@ class DustGrains(object):
             # Calculate the emission for the used radaiation field
             interpolated_emission = self.interpol_emission(self.RF_strength)
             _emission = interpolated_emission * weights
-            
+
             results["emission"] = _emission
 
         return results
