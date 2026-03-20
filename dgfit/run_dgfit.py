@@ -21,6 +21,7 @@ from dgfit.dustmodel import (
     ZDA04DustModel,
     HD23DustModel,
     Y24DustModel,
+    Lognormal,
 )
 from dgfit.obsdata import ObsData
 
@@ -34,7 +35,7 @@ def DGFit_cmdparser():
     parser.add_argument(
         "--sizedisttype",
         default="WD01",
-        choices=["bins", "MRN77", "WD01", "ZDA04", "HD23", "Y24"],
+        choices=["bins", "MRN77", "WD01", "ZDA04", "HD23", "Y24", "lognormals"],
         help="Size distribution type",
     )
     parser.add_argument(
@@ -200,15 +201,6 @@ def set_obs_for_fitting(obsdata, fitobs):
     return fitobs_list
 
 
-def set_grains_for_fitting(names):
-
-    grain_list = []
-    for grain in names:
-        grain_list.append(grain)
-
-    return grain_list
-
-
 def calc_sizedist_fact(dustmodel, obsdata):
 
     results = dustmodel.eff_grain_props(obsdata)
@@ -231,541 +223,209 @@ def calc_sizedist_fact(dustmodel, obsdata):
     return factor_C, factor_sil
 
 
-def setparams_MRN77(dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains):
+# ============================================================================
+# PARAMETER SPECIFICATION DATA FOR ALL SIZE DISTRIBUTION TYPES
+# ============================================================================
 
+PARAM_SPECS = {
+    "MRN77": {
+        "all_carbonaceous": {
+            "use_factor": "factor_C",
+            "params": ["C", "alpha", "a_min", "a_max"],
+            "indexed": True,
+        },
+        "all_silicates": {
+            "use_factor": "factor_sil",
+            "params": ["C", "alpha", "a_min", "a_max"],
+            "indexed": True,
+        },
+    },
+    "WD01": {
+        "Silicates-DL84": {
+            "use_factor": "factor_sil",
+            "params": ["C_s", "a_ts", "alpha_s", "beta_s"],
+            "indexed": False,
+        },
+        "Carbonaceous-LD01": {
+            "use_factor": "factor_C",
+            "params": ["C_g", "a_tg", "alpha_g", "beta_g", "a_cg", "b_C"],
+            "indexed": False,
+        },
+    },
+    "ZDA04": {
+        "Carbonaceous-LD01": {
+            "use_factor": "factor_C",
+            "params": ["A", "c_0", "b_0", "b_1", "m_1", "a_3", "m_3"],
+            "indexed": True,
+        },
+        "Graphite-LD93": {
+            "use_factor": "factor_C",
+            "params": ["A", "c_0", "b_0", "b_1", "a_1", "m_1", "b_3", "a_3", "m_3", "b_4", "a_4", "m_4"],
+            "indexed": True,
+        },
+        "Silicates-DL84": {
+            "use_factor": "factor_sil",
+            "params": ["A", "c_0", "b_0", "b_1", "a_1", "m_1", "b_3", "a_3", "m_3", "b_4", "a_4", "m_4"],
+            "indexed": True,
+        },
+        "amC-ACH2-Z96": {
+            "use_factor": "factor_C",
+            "params": ["A", "c_0", "b_0", "b_1", "a_1", "m_1"],
+            "indexed": True,
+        },
+    },
+    "HD23": {
+        "Carbonaceous-DL07": {
+            "use_factor": "factor_C",
+            "params": ["B_1", "B_2"],
+            "indexed": False,
+        },
+        "AstroDust-DH21": {
+            "use_factor": "factor_sil",
+            "params": ["B_ad", "a_0", "sigma_ad", "A_0", "A_1", "A_2", "A_3", "A_4", "A_5"],
+            "indexed": False,
+        },
+    },
+    "Y24": {
+        "a-C-J16": {
+            "use_factor": "factor_C",
+            "params": ["A", "alpha", "a_C", "a_t", "gamma"],
+            "indexed": "partial",  # Only A is indexed, others are not
+        },
+        "a-C:H-J16": {
+            "use_factor": "factor_C",
+            "params": ["A", "a_0", "sigma"],
+            "indexed": True,
+        },
+        "aSil-2-D22": {
+            "use_factor": "factor_sil",
+            "params": ["A", "a_0", "sigma"],
+            "indexed": True,
+        },
+    },
+    "lognormals": {
+        "all_carbonaceous": {
+            "use_factor": "factor_C",
+            "params": ["A_s", "sigma_s", "a_s", "A_b", "sigma_b", "a_b"],
+            "indexed": True,
+        },
+        "all_silicates": {
+            "use_factor": "factor_sil",
+            "params": ["A_s", "sigma_s", "a_s", "A_b", "sigma_b", "a_b"],
+            "indexed": True,
+        },
+    }
+
+}
+
+
+# ============================================================================
+# GENERIC PARAMETER SETUP FUNCTION (replaces all 5 setparams_* functions)
+# ============================================================================
+
+def setparams_generic(dustmodel, obsdata, factor_C, factor_sil, ISRF, 
+                      fluffy_grains, sizedisttype):
+    """
+    Generic parameter setup function for all size distribution types.
+    
+    Replaces setparams_MRN77, setparams_WD01, setparams_ZDA04, 
+    setparams_HD23, and setparams_Y24.
+    """
     pnames = []
     p0 = []
     deltas = []
     logs = []
+    
+    specs = PARAM_SPECS.get(sizedisttype, {})
+    
     for i, component in enumerate(dustmodel.components):
-        cparams = dustmodel.parameters[component.name]
-        cdeltas = dustmodel.deltas[component.name]
-        clogs = dustmodel.logs[component.name]
-        if component.name in dustmodel.carbonaceous_names:
-            p0 += [
-                cparams["C"] / (factor_sil),
-            ]
-            deltas += [
-                np.array(cdeltas["C"]) / (factor_sil),
-            ]
+        comp_name = component.name
+        
+        # Get the spec for this component
+        if comp_name in specs:
+            spec = specs[comp_name]
+        elif "all_carbonaceous" in specs and comp_name in dustmodel.carbonaceous_names:
+            spec = specs["all_carbonaceous"]
+        elif "all_silicates" in specs and comp_name in dustmodel.silicate_names:
+            spec = specs["all_silicates"]
         else:
-            p0 += [
-                cparams["C"] / (factor_C),
-            ]
-            deltas += [
-                np.array(cdeltas["C"]) / (factor_C),
-            ]
-        p0 += [
-            cparams["alpha"],
-            cparams["a_min"],
-            cparams["a_max"],
-        ]
-        deltas += [
-            cdeltas["alpha"],
-            cdeltas["a_min"],
-            cdeltas["a_max"],
-        ]
-        logs += [
-            clogs["C"],
-            clogs["alpha"],
-            clogs["a_min"],
-            clogs["a_max"],
-        ]
+            raise ValueError(f"No parameter spec found for {comp_name} in {sizedisttype}")
+        
+        # Determine which factor to use for this component
+        use_factor_name = spec["use_factor"]
+        use_factor = factor_C if use_factor_name == "factor_C" else factor_sil
+        
+        # Extract component parameters and deltas
+        cparams = dustmodel.parameters[comp_name]
+        cdeltas = dustmodel.deltas[comp_name]
+        clogs = dustmodel.logs[comp_name]
+        
+        # Check if parameters are indexed by component loop index
+        is_indexed = spec.get("indexed", False)
+        
+        # Build parameter list from spec
+        param_keys = spec["params"]
+        
+        for param_key in param_keys:
+            # Construct actual parameter key (with indexing if needed)
+            if is_indexed == "partial":
+                # For partial indexing (e.g., a-C-J16), only "A" parameters are indexed
+                if param_key == "A":
+                    actual_key = f"{param_key}_{i}"
+                else:
+                    actual_key = param_key
+            elif is_indexed:
+                actual_key = f"{param_key}_{i}"
+            else:
+                actual_key = param_key
+            
+            # Get value
+            param_value = cparams[actual_key]
+            
+            # Apply abundance factor correction if this is an amplitude parameter
+            param_base = actual_key.split("_")[0]
+            if param_base in ["A", "C", "B"]:
+                param_value = param_value / use_factor
+            
+            p0.append(param_value)
+            
+            # Get delta (prior range) with abundance factor correction
+            delta_value = cdeltas[actual_key]
+            if isinstance(delta_value, (list, tuple)):
+                if param_base in ["A", "C", "B"]:
+                    delta_value = [d / use_factor for d in delta_value]
+                deltas.append(np.array(delta_value))
+            else:
+                deltas.append(delta_value)
+            
+            # Get log flag
+            logs.append(clogs[actual_key])
+            pnames.append(actual_key)
+        
+        # Add fluffy grain parameter if enabled
         if fluffy_grains:
-                cparams = dustmodel.parameters[component.name]
-                p0 += [cparams[f"Fluff_{i}"]]
-
-        pnames += cparams.keys()
-
+            fluffy_key = f"Fluff_{i}"
+            if fluffy_key in cparams:
+                p0.append(cparams[fluffy_key])
+            else:
+                p0.append(1.0)
+            deltas.append(np.array([0.2, 1.0]))
+            logs.append(False)
+            pnames.append(fluffy_key)
+    
+    # Add ISRF parameter if enabled
     if ISRF:
         cparams = dustmodel.parameters["Radiation field"]
-        p0 += [cparams["RF"]]
-        pnames += cparams.keys()
-
+        p0.append(cparams["RF"])
+        deltas.append(np.array([0.25, 20]))
+        logs.append(False)
+        pnames.append("RF")
+    
     return p0, deltas, logs, pnames
 
-
-def setparams_WD01(dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains):
-
-    pnames = []
-    p0 = []
-    deltas = []
-    logs = []
-    for i, component in enumerate(dustmodel.components):
-        if component.name == "Silicates-DL84":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams["C_s"] / (factor_sil),
-                cparams["a_ts"],
-                cparams["alpha_s"],
-                cparams["beta_s"],
-            ]
-            deltas += [
-                np.array(cdeltas["C_s"]) / (factor_sil),
-                cdeltas["a_ts"],
-                cdeltas["alpha_s"],
-                cdeltas["beta_s"],
-            ]
-            logs += [
-                clogs["C_s"],
-                clogs["a_ts"],
-                clogs["alpha_s"],
-                clogs["beta_s"],
-            ]
-
-        else:
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams["C_g"] / (factor_C),
-                cparams["a_tg"],
-                cparams["alpha_g"],
-                cparams["beta_g"],
-                cparams["a_cg"],
-                cparams["b_C"],
-            ]
-            deltas += [
-                np.array(cdeltas["C_g"]) / (factor_C),
-                cdeltas["a_tg"],
-                cdeltas["alpha_g"],
-                cdeltas["beta_g"],
-                cdeltas["a_cg"],
-                cdeltas["b_C"],
-            ]
-            logs += [
-                clogs["C_g"],
-                clogs["a_tg"],
-                clogs["alpha_g"],
-                clogs["beta_g"],
-                clogs["a_cg"],
-                clogs["b_C"],
-            ]
-
-        if fluffy_grains:
-            cparams = dustmodel.parameters[component.name]
-            p0 += [cparams[f"Fluff_{i}"]]
-
-        pnames += cparams.keys()
-
-    if ISRF:
-        cparams = dustmodel.parameters["Radiation field"]
-        p0 += [cparams["RF"]]
-        pnames += cparams.keys()
-
-    return p0, deltas, logs, pnames
-
-
-def setparams_ZDA04(dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains):
-
-    pnames = []
-    p0 = []
-    deltas = []
-    logs = []
-    for i, component in enumerate(dustmodel.components):
-        if component.name == "Carbonaceous-LD01":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_C),
-                cparams[f"c_0_{i}"],
-                cparams[f"b_0_{i}"],
-                cparams[f"b_1_{i}"],
-                cparams[f"m_1_{i}"],
-                cparams[f"a_3_{i}"],
-                cparams[f"m_3_{i}"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_C),
-                cdeltas[f"c_0_{i}"],
-                cdeltas[f"b_0_{i}"],
-                cdeltas[f"b_1_{i}"],
-                cdeltas[f"m_1_{i}"],
-                cdeltas[f"a_3_{i}"],
-                cdeltas[f"m_3_{i}"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs[f"c_0_{i}"],
-                clogs[f"b_0_{i}"],
-                clogs[f"b_1_{i}"],
-                clogs[f"m_1_{i}"],
-                clogs[f"a_3_{i}"],
-                clogs[f"m_3_{i}"],
-            ]
-
-        elif component.name == "Graphite-LD93":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_C),
-                cparams[f"c_0_{i}"],
-                cparams[f"b_0_{i}"],
-                cparams[f"b_1_{i}"],
-                cparams[f"a_1_{i}"],
-                cparams[f"m_1_{i}"],
-                cparams[f"b_3_{i}"],
-                cparams[f"a_3_{i}"],
-                cparams[f"m_3_{i}"],
-                cparams[f"b_4_{i}"],
-                cparams[f"a_4_{i}"],
-                cparams[f"m_4_{i}"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_C),
-                cdeltas[f"c_0_{i}"],
-                cdeltas[f"b_0_{i}"],
-                cdeltas[f"b_1_{i}"],
-                cdeltas[f"a_1_{i}"],
-                cdeltas[f"m_1_{i}"],
-                cdeltas[f"b_3_{i}"],
-                cdeltas[f"a_3_{i}"],
-                cdeltas[f"m_3_{i}"],
-                cdeltas[f"b_4_{i}"],
-                cdeltas[f"a_4_{i}"],
-                cdeltas[f"m_4_{i}"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs[f"c_0_{i}"],
-                clogs[f"b_0_{i}"],
-                clogs[f"b_1_{i}"],
-                clogs[f"a_1_{i}"],
-                clogs[f"m_1_{i}"],
-                clogs[f"b_3_{i}"],
-                clogs[f"a_3_{i}"],
-                clogs[f"m_3_{i}"],
-                clogs[f"b_4_{i}"],
-                clogs[f"a_4_{i}"],
-                clogs[f"m_4_{i}"],
-            ]
-
-        elif component.name == "Silicates-DL84":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_sil),
-                cparams[f"c_0_{i}"],
-                cparams[f"b_0_{i}"],
-                cparams[f"b_1_{i}"],
-                cparams[f"a_1_{i}"],
-                cparams[f"m_1_{i}"],
-                cparams[f"b_3_{i}"],
-                cparams[f"a_3_{i}"],
-                cparams[f"m_3_{i}"],
-                cparams[f"b_4_{i}"],
-                cparams[f"a_4_{i}"],
-                cparams[f"m_4_{i}"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_sil),
-                cdeltas[f"c_0_{i}"],
-                cdeltas[f"b_0_{i}"],
-                cdeltas[f"b_1_{i}"],
-                cdeltas[f"a_1_{i}"],
-                cdeltas[f"m_1_{i}"],
-                cdeltas[f"b_3_{i}"],
-                cdeltas[f"a_3_{i}"],
-                cdeltas[f"m_3_{i}"],
-                cdeltas[f"b_4_{i}"],
-                cdeltas[f"a_4_{i}"],
-                cdeltas[f"m_4_{i}"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs[f"c_0_{i}"],
-                clogs[f"b_0_{i}"],
-                clogs[f"b_1_{i}"],
-                clogs[f"a_1_{i}"],
-                clogs[f"m_1_{i}"],
-                clogs[f"b_3_{i}"],
-                clogs[f"a_3_{i}"],
-                clogs[f"m_3_{i}"],
-                clogs[f"b_4_{i}"],
-                clogs[f"a_4_{i}"],
-                clogs[f"m_4_{i}"],
-            ]
-
-        elif component.name == "amC-ACH2-Z96":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_C),
-                cparams[f"c_0_{i}"],
-                cparams[f"b_0_{i}"],
-                cparams[f"b_1_{i}"],
-                cparams[f"a_1_{i}"],
-                cparams[f"m_1_{i}"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_C),
-                cdeltas[f"c_0_{i}"],
-                cdeltas[f"b_0_{i}"],
-                cdeltas[f"b_1_{i}"],
-                cdeltas[f"a_1_{i}"],
-                cdeltas[f"m_1_{i}"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs[f"c_0_{i}"],
-                clogs[f"b_0_{i}"],
-                clogs[f"b_1_{i}"],
-                clogs[f"a_1_{i}"],
-                clogs[f"m_1_{i}"],
-            ]
-
-        elif component.name == "Silicates1-ZDA04":
-            cparams = dustmodel.parameters["Silicates1-ZDA04"]
-            cdeltas = dustmodel.deltas["Silicates1-ZDA04"]
-            clogs = dustmodel.logs["Silicates1-ZDA04"]
-            p0 += [
-                cparams["A"] / (factor_sil),
-                cparams["c_0"],
-                cparams["b_0"],
-                cparams["b_1"],
-                cparams["a_1"],
-                cparams["m_1"],
-            ]
-            deltas += [
-                np.array(cdeltas["A"]) / (factor_sil),
-                cdeltas["c_0"],
-                cdeltas["b_0"],
-                cdeltas["b_1"],
-                cdeltas["a_1"],
-                cdeltas["m_1"],
-            ]
-            logs += [
-                clogs["A"],
-                clogs["c_0"],
-                clogs["b_0"],
-                clogs["b_1"],
-                clogs["a_1"],
-                clogs["m_1"],
-            ]
-
-        elif component.name == "Silicates2-ZDA04":
-            cparams = dustmodel.parameters["Silicates2-ZDA04"]
-            cdeltas = dustmodel.deltas["Silicates2-ZDA04"]
-            clogs = dustmodel.logs["Silicates2-ZDA04"]
-            p0 += [
-                cparams["A"] / (factor_sil),
-                cparams["c_0"],
-                cparams["b_0"],
-                cparams["b_1"],
-                cparams["a_1"],
-                cparams["m_1"],
-                cparams["b_2"],
-                cparams["a_2"],
-                cparams["m_2"],
-            ]
-            deltas += [
-                np.array(cdeltas["A"]) / (factor_sil),
-                cdeltas["c_0"],
-                cdeltas["b_0"],
-                cdeltas["b_1"],
-                cdeltas["a_1"],
-                cdeltas["m_1"],
-                cdeltas["b_2"],
-                cdeltas["a_2"],
-                cdeltas["m_2"],
-            ]
-            logs += [
-                clogs["A"],
-                clogs["c_0"],
-                clogs["b_0"],
-                clogs["b_1"],
-                clogs["a_1"],
-                clogs["m_1"],
-                clogs["b_2"],
-                clogs["a_2"],
-                clogs["m_2"],
-            ]
-
-        if fluffy_grains:
-            cparams = dustmodel.parameters[component.name]
-            p0 += [cparams[f"Fluff_{i}"]]
-
-        pnames += cparams.keys()
-
-    if ISRF:
-        cparams = dustmodel.parameters["Radiation field"]
-        p0 += [cparams["RF"]]
-        pnames += cparams.keys()
-
-    return p0, deltas, logs, pnames
-
-
-def setparams_HD23(dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains):
-
-    pnames = []
-    p0 = []
-    deltas = []
-    logs = []
-    for i, component in enumerate(dustmodel.components):
-        if component.name == "Carbonaceous-DL07":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams["B_1"] / (factor_C),
-                cparams["B_2"] / (factor_C),
-            ]
-            deltas += [
-                np.array(cdeltas["B_1"]) / (factor_C),
-                np.array(cdeltas["B_2"]) / (factor_C),
-            ]
-            logs += [
-                clogs["B_1"],
-                clogs["B_2"],
-            ]
-
-        elif component.name == "AstroDust-DH21":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams["B_ad"] / (factor_sil),
-                cparams["a_0"],
-                cparams["sigma_ad"],
-                cparams["A_0"] / (factor_sil),
-                cparams["A_1"],
-                cparams["A_2"],
-                cparams["A_3"],
-                cparams["A_4"],
-                cparams["A_5"],
-            ]
-            deltas += [
-                np.array(cdeltas["B_ad"]) / (factor_sil),
-                cdeltas["a_0"],
-                cdeltas["sigma_ad"],
-                np.array(cdeltas["A_0"]) / (factor_sil),
-                cdeltas["A_1"],
-                cdeltas["A_2"],
-                cdeltas["A_3"],
-                cdeltas["A_4"],
-                cdeltas["A_5"],
-            ]
-            logs += [
-                clogs["B_ad"],
-                clogs["a_0"],
-                clogs["sigma_ad"],
-                clogs["A_0"],
-                clogs["A_1"],
-                clogs["A_2"],
-                clogs["A_3"],
-                clogs["A_4"],
-                clogs["A_5"],
-            ]
-
-        if fluffy_grains:
-            cparams = dustmodel.parameters[component.name]
-            p0 += [cparams[f"Fluff_{i}"]]
-
-        pnames += cparams.keys()
-
-    if ISRF:
-        cparams = dustmodel.parameters["Radiation field"]
-        p0 += [cparams["RF"]]
-        pnames += cparams.keys()
-
-    return p0, deltas, logs, pnames
-
-
-def setparams_Y24(dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains):
-
-    pnames = []
-    p0 = []
-    deltas = []
-    logs = []
-    for i, component in enumerate(dustmodel.components):
-        if component.name == "a-C-J16":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_C),
-                cparams["alpha"],
-                cparams["a_C"],
-                cparams["a_t"],
-                cparams["gamma"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_C),
-                cdeltas["alpha"],
-                cdeltas["a_C"],
-                cdeltas["a_t"],
-                cdeltas["gamma"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs["alpha"],
-                clogs["a_C"],
-                clogs["a_t"],
-                clogs["gamma"],
-            ]
-
-        elif component.name == "a-C:H-J16":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_C),
-                cparams[f"a_0_{i}"],
-                cparams[f"sigma_{i}"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_C),
-                cdeltas[f"a_0_{i}"],
-                cdeltas[f"sigma_{i}"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs[f"a_0_{i}"],
-                clogs[f"sigma_{i}"],
-            ]
-
-        elif component.name == "aSil-2-D22":
-            cparams = dustmodel.parameters[component.name]
-            cdeltas = dustmodel.deltas[component.name]
-            clogs = dustmodel.logs[component.name]
-            p0 += [
-                cparams[f"A_{i}"] / (factor_sil),
-                cparams[f"a_0_{i}"],
-                cparams[f"sigma_{i}"],
-            ]
-            deltas += [
-                np.array(cdeltas[f"A_{i}"]) / (factor_sil),
-                cdeltas[f"a_0_{i}"],
-                cdeltas[f"sigma_{i}"],
-            ]
-            logs += [
-                clogs[f"A_{i}"],
-                clogs[f"a_0_{i}"],
-                clogs[f"sigma_{i}"],
-            ]
-
-        if fluffy_grains:
-            cparams = dustmodel.parameters[component.name]
-            p0 += [cparams[f"Fluff_{i}"]]
-
-        pnames += cparams.keys()
-
-    if ISRF:
-        cparams = dustmodel.parameters["Radiation field"]
-        p0 += [cparams["RF"]]
-        pnames += cparams.keys()
-
-    return p0, deltas, logs, pnames
 
 
 def add_priors_nautilus(pnames, logs, deltas, prior):
-    k = 0
     for i, name in enumerate(pnames):
         if name == "RF":
             prior.add_parameter("RF", dist=(0.25, 20))
@@ -774,17 +434,15 @@ def add_priors_nautilus(pnames, logs, deltas, prior):
         elif "Fluff_" in name:
             prior.add_parameter(f"{name}", dist=(0.2, 1))
             logs.append(False)
-            k += 1
 
         else:
-            j = i - k
-            if logs[j]:
+            if logs[i]:
                 prior.add_parameter(
-                    f"{name}", dist=loguniform(deltas[j][0], deltas[j][1])
+                    f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
                 )
             else:
                 prior.add_parameter(
-                    f"{name}", dist=(deltas[j][0], deltas[j][1])
+                    f"{name}", dist=(deltas[i][0], deltas[i][1])
                 )
 
 def main():
@@ -822,7 +480,7 @@ def main():
     fitobs_list = set_obs_for_fitting(obsdata, args.fitobs)
 
     # get the dust model on the full wavelength grid
-    compnames = set_grains_for_fitting(args.composition)
+    compnames = list(args.composition)
     with importlib_resources.as_file(ref) as data_path:
         dustmodel_full = DustModel(
             componentnames=compnames,
@@ -844,8 +502,9 @@ def main():
     ISRF = args.no_variable_ISRF
     fluffy_grains = args.fluffy_grains
     pnames = []
+    
+    # Create the appropriate DustModel based on sizedisttype
     if sizedisttype == "MRN77":
-        # define the fitting model
         dustmodel = MRN77DustModel(
             dustmodel=dustmodel_full,
             obsdata=obsdata,
@@ -855,21 +514,6 @@ def main():
             start_ISRF=args.start_ISRF,
             fluffy_grains=fluffy_grains,
         )
-
-        p0, deltas, logs, _pnames = setparams_MRN77(dustmodel, obsdata, 1, 1, ISRF, fluffy_grains)
-        pnames += _pnames
-        dustmodel.set_size_dist(p0)
-
-        if args.limit_abund:
-            factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, deltas, logs, _pnames_ = setparams_MRN77(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF
-            )
-            dustmodel.set_size_dist(p0)
-
-        if args.fitting_package == "nautilus":
-            add_priors_nautilus(pnames, logs, deltas, prior)
-
     elif sizedisttype == "WD01":
         dustmodel = WD01DustModel(
             dustmodel=dustmodel_full,
@@ -880,21 +524,6 @@ def main():
             start_ISRF=args.start_ISRF,
             fluffy_grains=fluffy_grains,
         )
-
-        p0, deltas, logs, _pnames = setparams_WD01(dustmodel, obsdata, 1, 1, ISRF, fluffy_grains)
-        pnames += _pnames
-        dustmodel.set_size_dist(p0)
-
-        if args.limit_abund:
-            factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, deltas, logs, _pnames_ = setparams_WD01(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF
-            )
-            dustmodel.set_size_dist(p0)
-
-        if args.fitting_package == "nautilus":
-            add_priors_nautilus(pnames, logs, deltas, prior)
-
     elif sizedisttype == "ZDA04":
         dustmodel = ZDA04DustModel(
             dustmodel=dustmodel_full,
@@ -905,21 +534,6 @@ def main():
             start_ISRF=args.start_ISRF,
             fluffy_grains=fluffy_grains,
         )
-
-        p0, deltas, logs, _pnames = setparams_ZDA04(dustmodel, obsdata, 1, 1, ISRF, fluffy_grains)
-        pnames += _pnames
-        dustmodel.set_size_dist(p0)
-
-        if args.limit_abund:
-            factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, deltas, logs, _pnames_ = setparams_ZDA04(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF
-            )
-            dustmodel.set_size_dist(p0)
-
-        if args.fitting_package == "nautilus":
-            add_priors_nautilus(pnames, logs, deltas, prior)
-
     elif sizedisttype == "HD23":
         dustmodel = HD23DustModel(
             dustmodel=dustmodel_full,
@@ -930,21 +544,6 @@ def main():
             start_ISRF=args.start_ISRF,
             fluffy_grains=fluffy_grains,
         )
-
-        p0, deltas, logs, _pnames = setparams_HD23(dustmodel, obsdata, 1, 1, ISRF, fluffy_grains)
-        pnames += _pnames
-        dustmodel.set_size_dist(p0)
-
-        if args.limit_abund:
-            factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, deltas, logs, _pnames_ = setparams_HD23(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF
-            )
-            dustmodel.set_size_dist(p0)
-
-        if args.fitting_package == "nautilus":
-            add_priors_nautilus(pnames, logs, deltas, prior)
-
     elif sizedisttype == "Y24":
         dustmodel = Y24DustModel(
             dustmodel=dustmodel_full,
@@ -955,15 +554,37 @@ def main():
             start_ISRF=args.start_ISRF,
             fluffy_grains=fluffy_grains,
         )
-
-        p0, deltas, logs, _pnames = setparams_Y24(dustmodel, obsdata, 1, 1, ISRF, fluffy_grains)
+    elif sizedisttype == "lognormals":
+        dustmodel = Lognormal(
+            dustmodel=dustmodel_full,
+            obsdata=obsdata,
+            limit_abundances=args.limit_abund,
+            variable_ISRF=ISRF,
+            divide_npoints=args.weight_by_average_unc,
+            start_ISRF=args.start_ISRF,
+            fluffy_grains=fluffy_grains,
+        )
+    elif sizedisttype == "bins":
+        # bins dustmodel will be created in the parameter setup section
+        pass
+    elif args.read is not None:
+        dustmodel = dustmodel_full
+    else:
+        print("Size distribution choice not known")
+        exit()
+    
+    # Setup parameters using generic function for non-bins cases
+    if sizedisttype in ["MRN77", "WD01", "ZDA04", "HD23", "Y24", "lognormals"]:
+        p0, deltas, logs, _pnames = setparams_generic(
+            dustmodel, obsdata, 1, 1, ISRF, fluffy_grains, sizedisttype
+        )
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, deltas, logs, _pnames_ = setparams_Y24(
-                dustmodel, obsdata, factor_C, factor_sil, ISRF
+            p0, deltas, logs, _pnames = setparams_generic(
+                dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains, sizedisttype
             )
             dustmodel.set_size_dist(p0)
 

@@ -47,7 +47,7 @@ def plot_dgfit_sizedist(
     fontsize=12,
     mass=True,
     plegend=True,
-    ltype=["o-", "x-", "D-"],
+    ltype=["o-", "x-", "D-", "-"],
     alpha=1.0,
     markers=1,
     file="none",
@@ -137,8 +137,17 @@ def plot_dgfit_sizedist(
 
 # plot the atomic abundances
 def plot_dgfit_abundances(
-    ax, hdu, obsdata, color="g", fontsize=12, plabel="None", plegend=False
+    ax, hdulist, obsdata, color="g", fontsize=12, plabel="None", plegend=False
 ):
+    n_comps = hdulist[0].header["NCOMPS"]
+    title = ""
+    for i in range(n_comps):
+        hdu = hdulist[i + 1]
+        fluffy = hdu.header.get(f"Fluff_{i}")
+        if fluffy is not None:
+            title += f"Fluff_{i+1}={fluffy:.2f}; "
+    hdu = hdulist["ABUNDANCES"]
+
     # plot the dust abundances
     atomnames = hdu.data["NAME"]
     atomabund = hdu.data["ABUND"]
@@ -162,6 +171,7 @@ def plot_dgfit_abundances(
     ax.set_ylim(0)
     ax.set_xticks(aindxs + (0.75 * width))
     ax.set_xticklabels(atomnames)
+    ax.set_title(title, fontsize=11)
 
     if plegend:
         ax.legend()
@@ -420,7 +430,7 @@ def main():
     # plot the abundances
     plot_dgfit_abundances(
         ax[0, 1],
-        hdulist["ABUNDANCES"],
+        hdulist,
         OD,
         fontsize=fontsize,
         color="r",
@@ -457,7 +467,7 @@ def main():
             markers=args.markeverynth,
         )
         plot_dgfit_abundances(
-            ax[0, 1], hdulist2["ABUNDANCES"], OD, fontsize=fontsize, color="c"
+            ax[0, 1], hdulist2, OD, fontsize=fontsize, color="c"
         )
         plot_dgfit_extinction(
             ax[1, 0], hdulist2["EXTINCTION"], OD, fontsize=fontsize, ltype="--"

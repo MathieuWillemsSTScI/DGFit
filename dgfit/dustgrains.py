@@ -116,8 +116,15 @@ class DustGrains(object):
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["amC-ACH2-Z96"]:  # from Zubko 1996
+        elif componentname in ["amC-ACH2-Z96", "amC-BE-Z96"]:  # from Zubko 1996
             self.density = 1.81  # g/cm^3
+            self.atomic_composition = "C"
+            self.atomic_comp_names = ["C"]
+            self.atomic_comp_number = np.array([1])
+            self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
+
+        elif componentname in ["amC-ACAR-Z96"]:  # from Zubko 1996
+            self.density = 1.87  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
@@ -356,29 +363,15 @@ class DustGrains(object):
         self.scat_g_csca = np.empty((self.n_sizes, self.n_wavelengths_scat_g))
 
         # loop over the sizes and generate grain info on the observed data grid
-        for i in range(self.n_sizes):
-            cext_interp = interp1d(DustGrain.wavelengths, DustGrain.cext[i, :])
-            cabs_interp = interp1d(DustGrain.wavelengths, DustGrain.cabs[i, :])
-            csca_interp = interp1d(DustGrain.wavelengths, DustGrain.csca[i, :])
-            self.cext[i, :] = cext_interp(self.wavelengths)
-            self.cabs[i, :] = cabs_interp(self.wavelengths)
-            self.csca[i, :] = csca_interp(self.wavelengths)
+        self.cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(self.wavelengths)
+        self.cabs = interp1d(DustGrain.wavelengths, DustGrain.cabs, axis=1)(self.wavelengths)
+        self.csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(self.wavelengths)
+        self.scat_a_cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(self.wavelengths_scat_a)
+        self.scat_a_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(self.wavelengths_scat_a)
+        self.scat_g = interp1d(DustGrain.wavelengths, DustGrain.scat_g, axis=1)(self.wavelengths_scat_g)
+        self.scat_g_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(self.wavelengths_scat_g)
+        self.emission = interp1d(DustGrain.wavelengths_emission, DustGrain.emission, axis=2)(self.wavelengths_emission)
 
-            self.scat_a_cext[i, :] = cext_interp(self.wavelengths_scat_a)
-            self.scat_a_csca[i, :] = csca_interp(self.wavelengths_scat_a)
-
-            g_interp = interp1d(DustGrain.wavelengths, DustGrain.scat_g[i, :])
-            self.scat_g[i, :] = g_interp(self.wavelengths_scat_g)
-            self.scat_g_csca[i, :] = csca_interp(self.wavelengths_scat_g)
-
-            emission_interp = interp1d(
-                DustGrain.wavelengths_emission, DustGrain.emission[:, i, :]
-            )
-            self.emission[:, i, :] = emission_interp(self.wavelengths_emission)
-
-    # function to integrate this component
-    # returns the effective/total cabs, csca, etc.
-    # these are normalized to A(V)
     def eff_grain_props(self, ObsData, predict_all=False):
         """
         Calculate the grain properties integrated over the size distribution
@@ -395,7 +388,7 @@ class DustGrains(object):
            Scattering cross section
 
         Abundances : ('list', 'numpy.ndarray') named 'natoms'
-           Tuple with (atomic elements, # per/10^6 H atoms
+           Tuple with (atomic elements, # per/10^6 H atoms)
 
         Emission : 'numpy.ndarray' named 'emission'
            IR emission
@@ -430,21 +423,12 @@ class DustGrains(object):
         deltas = 0.5 * (self.sizes[1 : self.n_sizes] - self.sizes[0 : self.n_sizes - 1])
         sizedist1 = self.size_dist[0 : self.n_sizes - 1]
         sizedist2 = self.size_dist[1 : self.n_sizes]
-        for i in range(self.n_wavelengths):
-            _effcabs[i] = np.sum(
-                deltas
-                * (
-                    (self.cabs[0 : self.n_sizes - 1, i] * sizedist1)
-                    + (self.cabs[1 : self.n_sizes, i] * sizedist2)
-                )
-            )
-            _effcsca[i] = np.sum(
-                deltas
-                * (
-                    (self.csca[0 : self.n_sizes - 1, i] * sizedist1)
-                    + (self.csca[1 : self.n_sizes, i] * sizedist2)
-                )
-            )
+        _effcabs = np.sum(
+                deltas[:, None] * (self.cabs[:-1, :] * sizedist1[:, None] + self.cabs[1:, :] * sizedist2[:, None]), axis=0
+        )
+        _effcsca = np.sum(
+                deltas[:, None] * (self.csca[:-1, :] * sizedist1[:, None] + self.csca[1:, :] * sizedist2[:, None]), axis=0
+        )
 
             # *not* faster to use numexpr (tested in 2015)
 

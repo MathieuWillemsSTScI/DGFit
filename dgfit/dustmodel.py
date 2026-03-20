@@ -256,6 +256,7 @@ class DustModel(object):
             )
             if self.fluffy_grains:
                 component.fluffy_grain_factor = params[k2]
+                self.parameters[component.name][f"Fluff_{k}"] = params[k2]
                 k2 += 1
             if self.variable_ISRF:
                 component.RF_strength = params[-1]
@@ -1460,69 +1461,6 @@ class ZDA04DustModel(DustModel):
                         f"m_1_{i}": False,
                     }
 
-                elif component.name == "Silicates1-ZDA04":
-                    n = 6
-                    self.parameters["Silicates1-ZDA04"] = {
-                        "A": 3.680573e-3 / (5.34e-22),
-                        "c_0": -8.88283,
-                        "b_0": -3.69508,
-                        "b_1": 2.17105e-20,
-                        "a_1": 3e-7,
-                        "m_1": 29.2,
-                    }
-                    self.deltas["Silicates1-ZDA04"] = {
-                        "A": [1e16, 5e19],
-                        "c_0": [-12, -5],
-                        "b_0": [-8, -1],
-                        "b_1": [1e-33, 1e-13],
-                        "a_1": [0, 1e-3],
-                        "m_1": [5, 50],
-                    }
-                    self.logs["Silicates1-ZDA04"] = {
-                        "A": True,
-                        "c_0": False,
-                        "b_0": False,
-                        "b_1": True,
-                        "a_1": False,
-                        "m_1": False,
-                    }
-
-                elif component.name == "Silicates2-ZDA04":
-                    n = 9
-                    self.parameters["Silicates2-ZDA04"] = {
-                        "A": 6.218762e-9 / (5.34e-22),
-                        "c_0": 9.04443e3,
-                        "b_0": 5.7679e3,
-                        "b_1": 5.77024e3,
-                        "a_1": 2.7051e-2,
-                        "m_1": 1.00024,
-                        "b_2": 3.82848e2,
-                        "a_2": 9.39615e-2,
-                        "m_2": 8.94494,
-                    }
-                    self.deltas["Silicates2-ZDA04"] = {
-                        "A": [1e5, 1e10],
-                        "c_0": [1e3, 1e5],
-                        "b_0": [1e3, 1e5],
-                        "b_1": [1e3, 1e5],
-                        "a_1": [0, 1.0],
-                        "m_1": [0.1, 5.0],
-                        "b_2": [1e2, 1e4],
-                        "a_2": [0, 1.0],
-                        "m_2": [5.0, 15.0],
-                    }
-                    self.logs["Silicates2-ZDA04"] = {
-                        "A": True,
-                        "c_0": True,
-                        "b_0": True,
-                        "b_1": True,
-                        "a_1": False,
-                        "m_1": False,
-                        "b_2": True,
-                        "a_2": False,
-                        "m_2": False,
-                    }
-
                 else:
                     raise ValueError(
                         "%s grain material note supported for this size distribution"
@@ -1557,14 +1495,14 @@ class ZDA04DustModel(DustModel):
         # input grain sizes are in cm, needed in microns
         a = x * 1e4
 
-        if len(params) == 9:
+        if composition in ["Silicates1-ZDA04"]:
             A, c_0, b_0, b_1, a_1, m_1, b_2, a_2, m_2 = params[:9]
             # b_3 = a_3 = m_3 = b_4 = a_4 = m_4 = 0
             term3 = b_2 * (np.abs(np.log10(a / a_2)) ** m_2)
             term4 = 0.0
             term5 = 0.0
 
-        elif len(params) == 7:
+        if composition in ["Carbonaceous-LD01"]:
             A, c_0, b_0, b_1, m_1, a_3, m_3 = params[:7]
             a_1 = 1
             b_3 = 1e24
@@ -1573,14 +1511,14 @@ class ZDA04DustModel(DustModel):
             term4 = b_3 * np.power(np.abs(a - a_3), m_3)
             term5 = 0.0
 
-        elif len(params) == 6:
+        if composition in ["amC-ACH2-Z96"]:
             A, c_0, b_0, b_1, a_1, m_1 = params[:6]
             # b_2 = a_2 = m_2 = b_3 = a_3 = m_3 = b_4 = a_4 = m_4 = 0
             term3 = 0.0
             term4 = 0.0
             term5 = 0.0
 
-        else:
+        if composition in ["Graphite-LD93", "Silicates-DL84"]:
             A, c_0, b_0, b_1, a_1, m_1, b_3, a_3, m_3, b_4, a_4, m_4 = params[:12]
             # b_2 = a_2 = m_2 = 0
             term3 = 0.0
@@ -1594,33 +1532,23 @@ class ZDA04DustModel(DustModel):
 
         sizedist = A * (np.float64(10) ** np.float64(ga))
 
-        if composition == "ACH2-ZDA04":
+        if composition == "amC-ACH2-Z96":
             (indxs,) = np.where(np.logical_or(a < 0.02, a > 0.28))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "PAH-ZDA04":
+        if composition == "Carbonaceous-LD01":
             (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 5e-3))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "Silicates-ZDA04":
+        if composition == "Silicates-DL84":
             (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 0.34))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "Graphite-ZDA04":
+        if composition == "Graphite-LD93":
             (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 0.3))
-            if len(indxs) > 0:
-                sizedist[indxs] = 0.0
-
-        if composition == "Silicates1-ZDA04":
-            (indxs,) = np.where(np.logical_or(a < 3.5e-4, a > 0.024))
-            if len(indxs) > 0:
-                sizedist[indxs] = 0.0
-
-        if composition == "Silicates2-ZDA04":
-            (indxs,) = np.where(np.logical_or(a < 0.026, a > 0.37))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
@@ -1700,33 +1628,6 @@ class ZDA04DustModel(DustModel):
                 }
                 if self.fluffy_grains:
                     self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
-
-            elif component.name == "Silicates1-ZDA04":
-                self.parameters["Silicates1-ZDA04"] = {
-                    "A": cparams[0],
-                    "c_0": cparams[1],
-                    "b_0": cparams[2],
-                    "b_1": cparams[3],
-                    "a_1": cparams[4],
-                    "m_1": cparams[5],
-                }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
-
-            elif component.name == "Silicates2-ZDA04":
-                self.parameters["Silicates2-ZDA04"] = {
-                    "A": cparams[0],
-                    "c_0": cparams[1],
-                    "b_0": cparams[2],
-                    "b_1": cparams[3],
-                    "a_1": cparams[4],
-                    "m_1": cparams[5],
-                    "b_2": cparams[6],
-                    "a_2": cparams[7],
-                    "m_2": cparams[8],
-                }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[9]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -2253,6 +2154,160 @@ class Y24DustModel(DustModel):
             elif component.name in ["aSil-2-D22", "a-C:H-J16"]:
                 if cparams[1] <= 0:
                     lnp_bound = -np.inf
+
+        if lnp_bound < 0.0:
+            return lnp_bound
+        else:
+            dustmodel.set_size_dist(params)
+            return dustmodel.lnprob_generic(obsdata) + lnp_bound
+
+
+class Lognormal(DustModel):
+    """
+    Dust model that uses lognormals for the size distributions.
+
+    Same kewyords and attributes as the parent DustModel class.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.sizedisttype = "lognormals"
+
+        # set the number of size distribution parametres
+        if self.n_components > 0:
+            self.n_params = []
+            a = 1
+            for i, component in enumerate(self.components):
+                n = 6
+                sizes = component.sizes * 1e4  # input grain sizes are in cm, needed in microns
+                n_sizes = len(sizes)
+                cutoff = n_sizes // 10
+                middle = n_sizes // 2
+                start_mid = middle // 2
+                if component.name in self.silicate_names:
+                    a = 10
+                
+                self.parameters[component.name] = {
+                    f"A_s_{i}": 5e17 / a,
+                    f"sigma_s_{i}": 0.5,
+                    f"a_s_{i}": sizes[cutoff],
+                    f"A_b_{i}": 1e9 * a,
+                    f"sigma_b_{i}": 0.5,
+                    f"a_b_{i}": sizes[middle + cutoff],
+                }
+                self.deltas[component.name] = {
+                    f"A_s_{i}": [1e13, 5e19],
+                    f"sigma_s_{i}": [0, 10.0],
+                    f"a_s_{i}": [sizes[0], sizes[start_mid]],
+                    f"A_b_{i}": [1e4, 2e10],
+                    f"sigma_b_{i}": [0, 10.00001],
+                    f"a_b_{i}": [sizes[start_mid + 1], sizes[-1]],
+                }
+                self.logs[component.name] = {
+                    f"A_s_{i}": True,
+                    f"sigma_s_{i}": False,
+                    f"a_s_{i}": False,
+                    f"A_b_{i}": True,
+                    f"sigma_b_{i}": False,
+                    f"a_b_{i}": False,
+                }
+                if self.fluffy_grains:
+                    n += 1
+                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                self.n_params.append(n)
+                
+            if self.variable_ISRF:
+                self.n_params.append(1)
+                self.parameters["Radiation field"] = {"RF": self.start_ISRF}
+
+    def compute_size_dist(self, x, params, composition):
+        """
+        Compute the size distribution for the input sizes.
+
+        Parameters
+        ----------
+        x : floats
+            grain sizes
+        params : floats
+            Size distribution parameters
+
+        Returns
+        -------
+        floats
+            Size distribution as a function of x
+        """
+        # input grain sizes are in cm, needed in um
+        a = x * 1e4
+
+        A_s, sigma_s, a_s, A_b, sigma_b, a_b = params[:6]
+
+        sizedist = (A_s / (sigma_s * a)) * np.exp(
+            -np.power(np.log(a / a_s), 2) / (2 * np.power(sigma_s, 2))
+            ) + (A_b / (sigma_b * a)) * np.exp(
+            -np.power(np.log(a / a_b), 2) / (2 * np.power(sigma_b, 2)))
+        
+        return sizedist
+    
+    def set_size_dist_parameters(self, params):
+        """
+        Set the size distribution parameters in the object dictonary.
+
+        Parameters
+        ----------
+        params : floats
+            Size distribution parameters
+        """
+        k1 = 0
+        for k, component in enumerate(self.components):
+            k2 = k1 + self.n_params[k]
+            cparams = params[k1:k2]
+            k1 += self.n_params[k]
+            self.parameters[component.name] = {
+                f"A_s_{k}": cparams[0],
+                f"sigma_s_{k}": cparams[1],
+                f"a_s_{k}": cparams[2],
+                f"A_b_{k}": cparams[3],
+                f"sigma_b_{k}": cparams[4],
+                f"a_b_{k}": cparams[5],
+            }
+            if self.fluffy_grains:
+                self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
+
+        if self.variable_ISRF:
+            self.parameters["Radiation field"] = {"RF": params[-1]}
+
+    @staticmethod
+    def lnprob(params, obsdata, dustmodel):
+        """
+        Compute the ln(prob) given the model parameters
+
+        Parameters
+        ----------
+        params : array of floats
+            parameters of the Themis model
+        obsdata : ObsData object
+            observed data for fitting
+        dustmodel : DustModel object
+            must be passed explicitly as the fitters
+            require a static method (is this true?)
+
+        Returns
+        -------
+        lnprob : float
+            natural log of the probability the input parameters
+            describe the data
+        """
+        # priors
+        k1 = 0
+        lnp_bound = 0.0
+        for k, component in enumerate(dustmodel.components):
+            # get the parameters for the current component
+            k2 = k1 + dustmodel.n_params[k]
+            cparams = params[k1:k2]
+            k1 += dustmodel.n_params[k]
+
+            # keep the normalization always positive
+            if any (cparams[i] < 0.0 for i in range(0, 6)):
+                lnp_bound = -np.inf
 
         if lnp_bound < 0.0:
             return lnp_bound
