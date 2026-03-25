@@ -2181,7 +2181,6 @@ class Lognormal(DustModel):
         # set the number of size distribution parametres
         if self.n_components > 0:
             self.n_params = []
-            a = 1
             for i, component in enumerate(self.components):
                 n = 6
                 sizes = (

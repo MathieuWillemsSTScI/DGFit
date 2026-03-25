@@ -698,7 +698,7 @@ def main():
                         continue
 
                 pnames += [
-                    f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk]*10000, decimals=5)}"
+                    f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=5)}"
                 ]
                 upper = n_grains[kk]
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1e5

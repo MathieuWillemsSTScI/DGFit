@@ -78,7 +78,7 @@ def correlated_params(corr, labels, threshold=0.5):
     Returns a list of parameter names where |corr| > threshold with all others.
     """
     # make sure labels are plain Python strings
-    labels = [str(l) for l in labels]
+    labels = [str(label) for label in labels]
 
     N = len(labels)
     pairs = []

@@ -5,9 +5,6 @@ import matplotlib.pyplot as plt
 import corner
 import math
 
-from dgfit.dustmodel import DustModel
-from dgfit.obsdata import ObsData
-
 
 def load_nautilus_checkpoint(fname, n_live):
 

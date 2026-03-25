@@ -20,9 +20,9 @@ To plot the extinction coefficients, albedo, scattering phase function and emiss
     from dgfit.plotting.plot_dustgrains import plot
 
     DG = DustGrains()
-    DG.from_files("astro-silicates-WD01", "../../dgfit/data/indiv_grain/")
+    DG.from_files("Silicates-DL84", "../../dgfit/data/indiv_grain/")
 
-    plot(DG, 'astro-silicates-WD01', 1, True)
+    plot(DG, 'Silicates-DL84', 1, True)
 
 To see other dustgrains, use
 
@@ -57,7 +57,7 @@ To plot the average dustgrain size in function of wavelength for both extinction
     from dgfit.dustgrains import DustGrains
     from dgfit.plotting.plot_effsize import plot
     
-    compnames = ["astro-silicates-WD01", "astro-carbonaceous-WD01"]
+    compnames = ["Silicates-DL84", "Carbonaceous-LD01"]
 
     DustM = DustModel(componentnames=compnames, path="../../dgfit/data/indiv_grain/", dustmodel=None, obsdata=None, every_nth=2)
     model = WD01DustModel(dustmodel=DustM)
@@ -83,9 +83,9 @@ To make this plot, use
     from dgfit.plotting.plot_singlegrain_props import plot
 
     DG = DustGrains()
-    DG.from_files("astro-silicates-WD01", "../../dgfit/data/indiv_grain/", every_nth=1)
+    DG.from_files("Silicates-DL84", "../../dgfit/data/indiv_grain/", every_nth=1)
 
-    plot(DG, 10, 'astro-silicates-WD01', 1)
+    plot(DG, 10, 'Silicates-DL84', 1)
 
 The default wavelength for these plots is 0.1 micron. 
 To choose another wavelength (with the wavelength given in micron), use
@@ -122,9 +122,9 @@ To make this plot, use
     from dgfit.plotting.plot_rv import plot
 
     DG = DustGrains()
-    DG.from_files("astro-silicates-WD01", "../../dgfit/data/indiv_grain/", every_nth=1)
+    DG.from_files("Silicates-DL84", "../../dgfit/data/indiv_grain/", every_nth=1)
 
-    plot(DG, 10, 'astro-silicates-WD01')
+    plot(DG, 10, 'Silicates-DL84')
 
 The default wavelength for these plots is 0.1 micron. 
 To choose another wavelength (with the wavelength given in micron), use

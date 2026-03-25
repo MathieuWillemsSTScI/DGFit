@@ -145,7 +145,7 @@ def plot_dgfit_abundances(
         hdu = hdulist[i + 1]
         fluffy = hdu.header.get(f"Fluff_{i}")
         if fluffy is not None:
-            title += f"Fluff_{i+1}={fluffy:.2f}; "
+            title += f"Fluff_{i + 1}={fluffy:.2f}; "
     hdu = hdulist["ABUNDANCES"]
 
     # plot the dust abundances
