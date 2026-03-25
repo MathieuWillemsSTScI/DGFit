@@ -50,7 +50,7 @@ For example, to plot the default run results from the optimizer (= max prob):
     plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, plegend=True)
     plot_dgfit_abundances(
         ax[0, 1],
-        hdulist["ABUNDANCES"],
+        hdulist,
         OD,
         fontsize=fontsize,
         color="r",
