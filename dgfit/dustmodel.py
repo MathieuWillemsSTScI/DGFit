@@ -2200,18 +2200,18 @@ class Lognormal(DustModel):
                 self.deltas[component.name] = {
                     f"A_s_{i}": [5e14, 5e21],
                     f"sigma_s_{i}": [0, 10.0],
-                    f"a_s_{i}": [sizes[0], sizes[12]],
-                    f"A_b_{i}": [1e5, 1e12],
-                    f"sigma_b_{i}": [0, 15],
+                    f"a_s_{i}": [sizes[0], sizes[20]],
+                    f"A_b_{i}": [1e4, 1e12],
+                    f"sigma_b_{i}": [0, 30],
                     f"a_b_{i}": [sizes[0], sizes[-1]],
                 }
                 self.logs[component.name] = {
                     f"A_s_{i}": True,
                     f"sigma_s_{i}": False,
-                    f"a_s_{i}": False,
+                    f"a_s_{i}": True,
                     f"A_b_{i}": True,
                     f"sigma_b_{i}": False,
-                    f"a_b_{i}": False,
+                    f"a_b_{i}": True,
                 }
                 if self.fluffy_grains:
                     n += 1
