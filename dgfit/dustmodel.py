@@ -250,14 +250,13 @@ class DustModel(object):
         for k, component in enumerate(self.components):
             delta_val = self.n_params[k]
             k2 = k1 + delta_val
-            if self.fluffy_grains:
-                k2 -= 1
             component.size_dist[:] = self.compute_size_dist(
                 component.sizes[:], params[k1:k2], component.name
             )
             if self.fluffy_grains:
+                k2 -= 1
                 component.fluffy_grain_factor = params[k2]
-                self.parameters[component.name][f"Fluff_{k}"] = params[k2]
+                #self.parameters[component.name][f"Fluff_{k}"] = params[k2]
                 k2 += 1
             if self.variable_ISRF:
                 component.RF_strength = params[-1]
