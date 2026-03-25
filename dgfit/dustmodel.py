@@ -407,26 +407,23 @@ class DustModel(object):
         if obsdata.fit_abundance:
             natoms = results["natoms"]
             for atomname in natoms.keys():
-                if natoms[atomname] < obsdata.abundance_av[atomname][0]:
-                    lnp_dep += 0.0
-                else:
-                    if self.abundance_constraint:
-                        if (
-                            natoms[atomname] - obsdata.abundance_av[atomname][0]
-                            > obsdata.abundance_av[atomname][1]
-                        ):
-                            lnp_dep += np.inf
-                        else:
-                            lnp_dep += (
-                                (natoms[atomname] - obsdata.abundance_av[atomname][0])
-                                / (obsdata.abundance_av[atomname][1])
-                            ) ** 2
+                if self.abundance_constraint:
+                    if (
+                        natoms[atomname] - obsdata.abundance_av[atomname][0]
+                        > obsdata.abundance_av[atomname][1]
+                    ):
+                        lnp_dep += np.inf
                     else:
                         lnp_dep += (
                             (natoms[atomname] - obsdata.abundance_av[atomname][0])
                             / (obsdata.abundance_av[atomname][1])
                         ) ** 2
-            lnp_dep *= -0.5
+                else:
+                    lnp_dep += (
+                        (natoms[atomname] - obsdata.abundance_av[atomname][0])
+                        / (obsdata.abundance_av[atomname][1])
+                    ) ** 2
+        lnp_dep *= -0.5
 
         # compute the ln(prob) for IR emission
         lnp_emission = 0.0
@@ -2191,25 +2188,21 @@ class Lognormal(DustModel):
                     component.sizes * 1e4
                 )  # input grain sizes are in cm, needed in microns
                 n_sizes = len(sizes)
-                cutoff = n_sizes // 10
                 middle = n_sizes // 2
-                start_mid = middle // 2
-                if component.name in self.silicate_names:
-                    a = 10
 
                 self.parameters[component.name] = {
-                    f"A_s_{i}": 5e17 / a,
+                    f"A_s_{i}": 1e19,
                     f"sigma_s_{i}": 0.5,
-                    f"a_s_{i}": sizes[cutoff],
-                    f"A_b_{i}": 1e9 * a,
+                    f"a_s_{i}": sizes[3],
+                    f"A_b_{i}": 7e10,
                     f"sigma_b_{i}": 0.5,
-                    f"a_b_{i}": sizes[middle + cutoff],
+                    f"a_b_{i}": sizes[middle],
                 }
                 self.deltas[component.name] = {
-                    f"A_s_{i}": [5e12, 5e19],
+                    f"A_s_{i}": [5e14, 5e21],
                     f"sigma_s_{i}": [0, 10.0],
-                    f"a_s_{i}": [sizes[0], sizes[start_mid]],
-                    f"A_b_{i}": [1e3, 1e10],
+                    f"a_s_{i}": [sizes[0], sizes[12]],
+                    f"A_b_{i}": [1e5, 1e12],
                     f"sigma_b_{i}": [0, 15],
                     f"a_b_{i}": [sizes[0], sizes[-1]],
                 }
