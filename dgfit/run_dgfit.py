@@ -701,7 +701,10 @@ def main():
                     f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=5)}"
                 ]
                 upper = n_grains[kk]
+                if args.fluffy_grains:
+                    upper *= 5
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1e5
+
                 upper *= 1 + (
                     eps * (k + kk + 1)
                 )  # making sure the prior limits are not exactly the same, to avoid correlations that are not there

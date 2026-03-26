@@ -111,6 +111,8 @@ def plot_dgfit_sizedist(
                 zorder=0,
             )
             j += length
+            if lowers[j] == 0.2:
+                j += 1
         if plot_uncs:
             ax.errorbar(
                 xvals[gindxs],
