@@ -257,7 +257,7 @@ class DustModel(object):
             )
             if self.fluffy_grains:
                 component.fluffy_grain_factor = params[k2]
-                #self.parameters[component.name][f"Fluff_{k}"] = params[k2]
+                # self.parameters[component.name][f"Fluff_{k}"] = params[k2]
                 k2 += 1
             if self.variable_ISRF:
                 component.RF_strength = params[-1]
