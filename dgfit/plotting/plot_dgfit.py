@@ -147,7 +147,7 @@ def plot_dgfit_abundances(
         hdu = hdulist[i + 1]
         fluffy = hdu.header.get(f"F_a_{i}")
         if fluffy is not None:
-            title += rf"$F_{{a {i+1}}}$={fluffy:.2f}"
+            title += rf"$F_{{a {i + 1}}}$={fluffy:.2f}"
             if i != n_comps - 1:
                 title += ", "
     hdu = hdulist["ABUNDANCES"]
