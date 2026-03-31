@@ -178,9 +178,9 @@ def DGFit_cmdparser():
         help="Nautilus: give the name of the file with the parameters",
     )
     parser.add_argument(
-        "--fluffy_grains",
+        "--abundance_factor",
         action="store_true",
-        help="Add an extra parameter to account for fluffy grains (porous & non-shperical)",
+        help="Add an extra parameter to calculate the abundance fractions",
     )
 
     return parser
@@ -378,7 +378,7 @@ PARAM_SPECS = {
 
 
 def setparams_generic(
-    dustmodel, obsdata, factor_C, factor_sil, ISRF, fluffy_grains, sizedisttype
+    dustmodel, obsdata, factor_C, factor_sil, ISRF, f_abund, sizedisttype
 ):
     """
     Generic parameter setup function for all size distribution types.
@@ -388,7 +388,7 @@ def setparams_generic(
     """
     pnames = []
     p0 = []
-    deltas = []
+    prior_ranges = []
     logs = []
 
     specs = PARAM_SPECS.get(sizedisttype, {})
@@ -412,9 +412,9 @@ def setparams_generic(
         use_factor_name = spec["use_factor"]
         use_factor = factor_C if use_factor_name == "factor_C" else factor_sil
 
-        # Extract component parameters and deltas
+        # Extract component parameters and prior ranges
         cparams = dustmodel.parameters[comp_name]
-        cdeltas = dustmodel.deltas[comp_name]
+        cprior_ranges = dustmodel.prior_ranges[comp_name]
         clogs = dustmodel.logs[comp_name]
 
         # Check if parameters are indexed by component loop index
@@ -446,58 +446,60 @@ def setparams_generic(
 
             p0.append(param_value)
 
-            # Get delta (prior range) with abundance factor correction
-            delta_value = cdeltas[actual_key]
-            if isinstance(delta_value, (list, tuple)):
+            # Get prior range with abundance factor correction
+            prior_range = cprior_ranges[actual_key]
+            if isinstance(prior_range, (list, tuple)):
                 if param_base in ["A", "C", "B"]:
-                    delta_value = [d / use_factor for d in delta_value]
-                deltas.append(np.array(delta_value))
+                    prior_range = [r / use_factor for r in prior_range]
+                prior_ranges.append(np.array(prior_range))
             else:
-                deltas.append(delta_value)
+                prior_ranges.append(prior_range)
 
             # Get log flag
             logs.append(clogs[actual_key])
             pnames.append(actual_key)
 
-        # Add fluffy grain parameter if enabled
-        if fluffy_grains:
-            fluffy_key = f"Fluff_{i}"
-            if fluffy_key in cparams:
-                p0.append(cparams[fluffy_key])
+        # Add abundance fraction parameter if enabled
+        if f_abund:
+            abund_key = f"F_a_{i}"
+            if abund_key in cparams:
+                p0.append(cparams[abund_key])
             else:
                 p0.append(1.0)
-            deltas.append(np.array([0.3, 1.0]))
+            prior_ranges.append(np.array([0.2, 5.0]))
             logs.append(False)
-            pnames.append(fluffy_key)
+            pnames.append(abund_key)
 
     # Add ISRF parameter if enabled
     if ISRF:
         cparams = dustmodel.parameters["Radiation field"]
         p0.append(cparams["RF"])
-        deltas.append(np.array([0.25, 20]))
+        prior_ranges.append(np.array([0.0001, 30]))
         logs.append(False)
         pnames.append("RF")
 
-    return p0, deltas, logs, pnames
+    return p0, prior_ranges, logs, pnames
 
 
-def add_priors_nautilus(pnames, logs, deltas, prior):
+def add_priors_nautilus(pnames, logs, prior_ranges, prior):
     for i, name in enumerate(pnames):
         if name == "RF":
-            prior.add_parameter("RF", dist=(0.25, 20))
+            prior.add_parameter("RF", dist=(0.0001, 30))
             logs.append(False)
 
-        elif "Fluff_" in name:
-            prior.add_parameter(f"{name}", dist=(0.2, 1))
+        elif "F_a_" in name:
+            prior.add_parameter(f"{name}", dist=(0.2, 5))
             logs.append(False)
 
         else:
             if logs[i]:
                 prior.add_parameter(
-                    f"{name}", dist=loguniform(deltas[i][0], deltas[i][1])
+                    f"{name}", dist=loguniform(prior_ranges[i][0], prior_ranges[i][1])
                 )
             else:
-                prior.add_parameter(f"{name}", dist=(deltas[i][0], deltas[i][1]))
+                prior.add_parameter(
+                    f"{name}", dist=(prior_ranges[i][0], prior_ranges[i][1])
+                )
 
 
 def main():
@@ -555,7 +557,7 @@ def main():
     prior = Prior()
     sizedisttype = args.sizedisttype
     ISRF = args.no_variable_ISRF
-    fluffy_grains = args.fluffy_grains
+    f_abund = args.abundance_factor
     pnames = []
 
     # Create the appropriate DustModel based on sizedisttype
@@ -567,7 +569,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            fluffy_grains=fluffy_grains,
+            f_abund=f_abund,
         )
     elif sizedisttype == "WD01":
         dustmodel = WD01DustModel(
@@ -577,7 +579,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            fluffy_grains=fluffy_grains,
+            f_abund=f_abund,
         )
     elif sizedisttype == "ZDA04":
         dustmodel = ZDA04DustModel(
@@ -587,7 +589,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            fluffy_grains=fluffy_grains,
+            f_abund=f_abund,
         )
     elif sizedisttype == "HD23":
         dustmodel = HD23DustModel(
@@ -597,7 +599,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            fluffy_grains=fluffy_grains,
+            f_abund=f_abund,
         )
     elif sizedisttype == "Y24":
         dustmodel = Y24DustModel(
@@ -607,7 +609,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            fluffy_grains=fluffy_grains,
+            f_abund=f_abund,
         )
     elif sizedisttype == "lognormals":
         dustmodel = Lognormal(
@@ -617,7 +619,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            fluffy_grains=fluffy_grains,
+            f_abund=f_abund,
         )
     elif sizedisttype == "bins":
         # bins dustmodel will be created in the parameter setup section
@@ -630,27 +632,27 @@ def main():
 
     # Setup parameters using generic function for non-bins cases
     if sizedisttype in ["MRN77", "WD01", "ZDA04", "HD23", "Y24", "lognormals"]:
-        p0, deltas, logs, _pnames = setparams_generic(
-            dustmodel, obsdata, 1, 1, ISRF, fluffy_grains, sizedisttype
+        p0, prior_ranges, logs, _pnames = setparams_generic(
+            dustmodel, obsdata, 1, 1, ISRF, f_abund, sizedisttype
         )
         pnames += _pnames
         dustmodel.set_size_dist(p0)
 
         if args.limit_abund:
             factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
-            p0, deltas, logs, _pnames = setparams_generic(
+            p0, prior_ranges, logs, _pnames = setparams_generic(
                 dustmodel,
                 obsdata,
                 factor_C,
                 factor_sil,
                 ISRF,
-                fluffy_grains,
+                f_abund,
                 sizedisttype,
             )
             dustmodel.set_size_dist(p0)
 
         if args.fitting_package == "nautilus":
-            add_priors_nautilus(pnames, logs, deltas, prior)
+            add_priors_nautilus(pnames, logs, prior_ranges, prior)
 
     # replace the default size distribution with one from a file
     elif args.read is not None:
@@ -668,7 +670,7 @@ def main():
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
             regularization=args.regularization,
-            fluffy_grains=fluffy_grains,
+            abundance_factor=f_abund,
         )
 
         eps = 1e-6
@@ -701,8 +703,8 @@ def main():
                     f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=5)}"
                 ]
                 upper = n_grains[kk]
-                if args.fluffy_grains:
-                    upper *= 5
+                if args.abundance_factor:
+                    upper *= 1
                 lower = (dustmodel.components[k].size_dist[kk] / 1e7) / 1e5
 
                 upper *= 1 + (
@@ -718,9 +720,9 @@ def main():
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
 
             n_deweighted_comp.append(n_deweighted)
-            if fluffy_grains:
-                pnames += [f"Fluff_{k}"]
-                prior.add_parameter(f"Fluff_{k}", dist=(0.2, 1))
+            if args.abundance_factor:
+                pnames += [f"F_a{k}"]
+                prior.add_parameter(f"F_a{k}", dist=(0.2, 1))
                 p0.append(1)
                 lowers.append(0.2)
                 uppers.append(1)
@@ -836,7 +838,7 @@ def main():
                 else:
                     opt_params[i] = 0
                     p += 1
-            if fluffy_grains:
+            if f_abund:
                 opt_params[-2] = lowers[-2] + (opt[-2] * (uppers[-2] - lowers[-2]))
             if ISRF:
                 opt_params[-1] = lowers[-1] + (opt[-1] * (uppers[-1] - lowers[-1]))

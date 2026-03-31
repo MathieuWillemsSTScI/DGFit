@@ -145,9 +145,11 @@ def plot_dgfit_abundances(
     title = ""
     for i in range(n_comps):
         hdu = hdulist[i + 1]
-        fluffy = hdu.header.get(f"Fluff_{i}")
+        fluffy = hdu.header.get(f"F_a_{i}")
         if fluffy is not None:
-            title += f"Fluff_{i + 1}={fluffy:.2f}; "
+            title += rf"$F_{{a {i+1}}}$={fluffy:.2f}"
+            if i != n_comps - 1:
+                title += ", "
     hdu = hdulist["ABUNDANCES"]
 
     # plot the dust abundances
@@ -173,10 +175,10 @@ def plot_dgfit_abundances(
     ax.set_ylim(0)
     ax.set_xticks(aindxs + (0.75 * width))
     ax.set_xticklabels(atomnames)
-    ax.set_title(title, fontsize=11)
+    ax.set_title(title, fontsize=12)
 
     if plegend:
-        ax.legend()
+        ax.legend(loc="upper left")
 
 
 # plot the extinction curves (total and components)

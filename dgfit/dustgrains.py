@@ -209,7 +209,7 @@ class DustGrains(object):
         self.size_dist = np.empty(self.n_sizes)
         self.stochastic_heating = np.empty(self.n_sizes)
         self.RF_strength = 1
-        self.fluffy_grain_factor = 1
+        self.abundance_factor = 1
 
         # loop over the files from the smallest to the largest sizes
         for k, file in enumerate(sorted(filelist, key=lambda file: file[1])):
@@ -335,7 +335,7 @@ class DustGrains(object):
         self.ISRF_field_strengths = DustGrain.ISRF_field_strengths
         self.n_ISRF_strengths = DustGrain.n_ISRF_strengths
         self.RF_strength = DustGrain.RF_strength
-        self.fluffy_grain_factor = DustGrain.fluffy_grain_factor
+        self.abundance_factor = DustGrain.abundance_factor
 
         # new values on the observed wavelength grids
         self.wavelengths = ObsData.ext_waves
@@ -616,7 +616,7 @@ class DustGrains(object):
                     )
                 )
 
-            _natoms[i] *= self.fluffy_grain_factor
+            _natoms[i] *= self.abundance_factor
 
         results["natoms"] = dict(zip(self.atomic_comp_names, _natoms))
 

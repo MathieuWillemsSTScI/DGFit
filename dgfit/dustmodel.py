@@ -68,7 +68,7 @@ class DustModel(object):
         divide_npoints=False,
         start_ISRF=1,
         regularization=False,
-        fluffy_grains=False,
+        abundance_factor=False,
     ):
         self.origin = None
         self.n_components = 0
@@ -82,8 +82,8 @@ class DustModel(object):
         self.divide_npoints = divide_npoints
         self.start_ISRF = start_ISRF
         self.regularization = regularization
-        self.fluffy_grains = fluffy_grains
-        self.deltas = {}
+        self.abundance_factor = abundance_factor
+        self.prior_ranges = {}
         self.logs = {}
         self.carbonaceous_names = [
             "Carbonaceous-LD01",
@@ -115,7 +115,7 @@ class DustModel(object):
             self.n_params = []
             for component in self.components:
                 n = component.n_sizes
-                if self.fluffy_grains:
+                if self.abundance_factor:
                     n += 1
                 self.n_params.append(n)
 
@@ -250,14 +250,14 @@ class DustModel(object):
         for k, component in enumerate(self.components):
             delta_val = self.n_params[k]
             k2 = k1 + delta_val
-            if self.fluffy_grains:
+            if self.abundance_factor:
                 k2 -= 1
             component.size_dist[:] = self.compute_size_dist(
                 component.sizes[:], params[k1:k2], component.name
             )
-            if self.fluffy_grains:
-                component.fluffy_grain_factor = params[k2]
-                # self.parameters[component.name][f"Fluff_{k}"] = params[k2]
+            if self.abundance_factor:
+                component.abundance_factor = params[k2]
+                # self.parameters[component.name][f"F_a_{k}"] = params[k2]
                 k2 += 1
             if self.variable_ISRF:
                 component.RF_strength = params[-1]
@@ -646,6 +646,13 @@ class DustModel(object):
                     tbhdu.header.set(
                         cparam[0], cparam[1], "parameters of size distribution model"
                     )
+            if self.abundance_factor:
+                for i, component in enumerate(self.components):
+                    tbhdu.header.set(
+                        f"F_a_{i}",
+                        1 / component.abundance_factor,
+                        "parameters of abundance factor",
+                    )
 
             hdulist.append(tbhdu)
 
@@ -904,7 +911,7 @@ class MRN77DustModel(DustModel):
                 "a_min": 1e-7,
                 "a_max": 1e-3,
             }
-            self.deltas[component.name] = {
+            self.prior_ranges[component.name] = {
                 "C": [5e-6, 1e-3],
                 "alpha": [1.0, 7.0],
                 "a_min": [3e-8, 1e-6],
@@ -916,9 +923,9 @@ class MRN77DustModel(DustModel):
                 "a_min": False,
                 "a_max": False,
             }
-            if self.fluffy_grains:
+            if self.abundance_factor:
                 self.n_params[i] += 1
-                self.parameters[component.name][f"Fluff_{i}"] = 1
+                self.parameters[component.name][f"F_a_{i}"] = 1
 
         if self.variable_ISRF:
             self.n_params.append(1)
@@ -977,8 +984,8 @@ class MRN77DustModel(DustModel):
                 "a_min": cparams[2],
                 "a_max": cparams[3],
             }
-            if self.fluffy_grains:
-                self.parameters[component.name][f"Fluff_{k}"] = cparams[4]
+            if self.abundance_factor:
+                self.parameters[component.name][f"F_a_{k}"] = cparams[4]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -1070,7 +1077,7 @@ class WD01DustModel(DustModel):
                         "alpha_s": -1.41,
                         "beta_s": -11.5,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         "C_s": [1e7, 2e11],
                         "a_ts": [500, 3000],
                         "alpha_s": [-4, 1],
@@ -1093,7 +1100,7 @@ class WD01DustModel(DustModel):
                         "a_cg": 0.499e4,
                         "b_C": 3.0e-5 / (5.345e-22),
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         "C_g": [1e7, 1e12],
                         "a_tg": [1, 3000],
                         "alpha_g": [-4, 10],
@@ -1114,9 +1121,9 @@ class WD01DustModel(DustModel):
                         "%s grain material note supported" % component.name
                     )
 
-                if self.fluffy_grains:
+                if self.abundance_factor:
                     n += 1
-                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                    self.parameters[component.name][f"F_a_{i}"] = 1
                 self.n_params.append(n)
 
             if self.variable_ISRF:
@@ -1233,8 +1240,8 @@ class WD01DustModel(DustModel):
                     "alpha_s": cparams[2],
                     "beta_s": cparams[3],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[4]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[4]
 
             elif component.name == "Carbonaceous-LD01":
                 self.parameters[component.name] = {
@@ -1245,8 +1252,8 @@ class WD01DustModel(DustModel):
                     "a_cg": cparams[4],
                     "b_C": cparams[5],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[6]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -1330,7 +1337,7 @@ class ZDA04DustModel(DustModel):
                         f"a_3_{i}": 1.98119e-3,  # 1.58225e-3 /// 1.98119e-3
                         f"m_3_{i}": 9.25894,  # 8.71891 /// 9.25894
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e16, 5e19],
                         f"c_0_{i}": [-12, -5],
                         f"b_0_{i}": [-15, -2],
@@ -1365,7 +1372,7 @@ class ZDA04DustModel(DustModel):
                         f"a_4_{i}": 0.169079,
                         f"m_4_{i}": 3.636654,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e16, 5e19],
                         f"c_0_{i}": [-15, -5],
                         f"b_0_{i}": [-9, -1],
@@ -1410,7 +1417,7 @@ class ZDA04DustModel(DustModel):
                         f"a_4_{i}": 0.474035,
                         f"m_4_{i}": 12.0995,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e16, 5e19],
                         f"c_0_{i}": [-12, -5],
                         f"b_0_{i}": [-7, -1],
@@ -1449,7 +1456,7 @@ class ZDA04DustModel(DustModel):
                         f"a_1_{i}": 2.03908e-4,
                         f"m_1_{i}": 34.7835,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e12, 1e15],
                         f"c_0_{i}": [-6, 0],
                         f"b_0_{i}": [-6, 0],
@@ -1472,9 +1479,9 @@ class ZDA04DustModel(DustModel):
                         % component.name
                     )
 
-                if self.fluffy_grains:
+                if self.abundance_factor:
                     n += 1
-                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                    self.parameters[component.name][f"F_a_{i}"] = 1
                 self.n_params.append(n)
 
             if self.variable_ISRF:
@@ -1583,8 +1590,8 @@ class ZDA04DustModel(DustModel):
                     f"a_3_{k}": cparams[5],
                     f"m_3_{k}": cparams[6],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[7]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[7]
 
             elif component.name == "Graphite-LD93":
                 self.parameters[component.name] = {
@@ -1601,8 +1608,8 @@ class ZDA04DustModel(DustModel):
                     f"a_4_{k}": cparams[10],
                     f"m_4_{k}": cparams[11],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[12]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[12]
 
             elif component.name == "Silicates-DL84":
                 self.parameters[component.name] = {
@@ -1619,8 +1626,8 @@ class ZDA04DustModel(DustModel):
                     f"a_4_{k}": cparams[10],
                     f"m_4_{k}": cparams[11],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[12]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[12]
 
             elif component.name == "amC-ACH2-Z96":
                 self.parameters[component.name] = {
@@ -1631,8 +1638,8 @@ class ZDA04DustModel(DustModel):
                     f"a_1_{k}": cparams[4],
                     f"m_1_{k}": cparams[5],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[6]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -1705,7 +1712,7 @@ class HD23DustModel(DustModel):
                         "B_1": 7.52e-7 / (3.24e-22),
                         "B_2": 8.09e-10 / (3.24e-22),
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         "B_1": [1e12, 1e17],
                         "B_2": [1e9, 1e14],
                     }
@@ -1727,7 +1734,7 @@ class HD23DustModel(DustModel):
                         "A_4": 7.963246509606041607e-3,
                         "A_5": -1.680451603515705633e-3,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         "B_ad": [1e9, 1e14],
                         "a_0": [10, 500],
                         "sigma_ad": [0.01, 1.0],
@@ -1756,9 +1763,9 @@ class HD23DustModel(DustModel):
                         % component.name
                     )
 
-                if self.fluffy_grains:
+                if self.abundance_factor:
                     n += 1
-                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                    self.parameters[component.name][f"F_a_{i}"] = 1
                 self.n_params.append(n)
 
             if self.variable_ISRF:
@@ -1842,8 +1849,8 @@ class HD23DustModel(DustModel):
                     "B_1": cparams[0],
                     "B_2": cparams[1],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[2]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[2]
 
             elif component.name == "AstroDust-DH21":
                 self.parameters[component.name] = {
@@ -1857,8 +1864,8 @@ class HD23DustModel(DustModel):
                     "A_4": cparams[7],
                     "A_5": cparams[8],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[9]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[9]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -1944,7 +1951,7 @@ class Y24DustModel(DustModel):
                         "a_t": 0.01,
                         "gamma": 1,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e2, 1e5],
                         "alpha": [-10, 0],
                         "a_C": [0.0001, 0.5],
@@ -1966,7 +1973,7 @@ class Y24DustModel(DustModel):
                         f"a_0_{i}": 6.195341e-3,
                         f"sigma_{i}": 1.315171,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e10, 1e14],
                         f"a_0_{i}": [0, 0.5],
                         f"sigma_{i}": [0.5, 5.0],
@@ -1984,7 +1991,7 @@ class Y24DustModel(DustModel):
                         f"a_0_{i}": 9.210816e-04,
                         f"sigma_{i}": 1.217290,
                     }
-                    self.deltas[component.name] = {
+                    self.prior_ranges[component.name] = {
                         f"A_{i}": [1e14, 1e18],
                         f"a_0_{i}": [0, 0.5],
                         f"sigma_{i}": [0.5, 5.0],
@@ -2001,9 +2008,9 @@ class Y24DustModel(DustModel):
                         % component.name
                     )
 
-                if self.fluffy_grains:
+                if self.abundance_factor:
                     n += 1
-                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                    self.parameters[component.name][f"F_a_{i}"] = 1
                 self.n_params.append(n)
 
             if self.variable_ISRF:
@@ -2092,8 +2099,8 @@ class Y24DustModel(DustModel):
                     "a_t": cparams[3],
                     "gamma": cparams[4],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[5]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[5]
 
             elif component.name == "a-C:H-J16":
                 self.parameters[component.name] = {
@@ -2101,8 +2108,8 @@ class Y24DustModel(DustModel):
                     f"a_0_{k}": cparams[1],
                     f"sigma_{k}": cparams[2],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[3]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[3]
 
             elif component.name == "aSil-2-D22":
                 self.parameters[component.name] = {
@@ -2110,8 +2117,8 @@ class Y24DustModel(DustModel):
                     f"a_0_{k}": cparams[1],
                     f"sigma_{k}": cparams[2],
                 }
-                if self.fluffy_grains:
-                    self.parameters[component.name][f"Fluff_{k}"] = cparams[3]
+                if self.abundance_factor:
+                    self.parameters[component.name][f"F_a_{k}"] = cparams[3]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
@@ -2197,7 +2204,7 @@ class Lognormal(DustModel):
                     f"sigma_b_{i}": 0.5,
                     f"a_b_{i}": sizes[middle],
                 }
-                self.deltas[component.name] = {
+                self.prior_ranges[component.name] = {
                     f"A_s_{i}": [5e14, 5e21],
                     f"sigma_s_{i}": [0, 10.0],
                     f"a_s_{i}": [sizes[0], sizes[20]],
@@ -2213,9 +2220,9 @@ class Lognormal(DustModel):
                     f"sigma_b_{i}": False,
                     f"a_b_{i}": True,
                 }
-                if self.fluffy_grains:
+                if self.abundance_factor:
                     n += 1
-                    self.parameters[component.name][f"Fluff_{i}"] = 1
+                    self.parameters[component.name][f"F_a_{i}"] = 1
                 self.n_params.append(n)
 
             if self.variable_ISRF:
@@ -2273,8 +2280,8 @@ class Lognormal(DustModel):
                 f"sigma_b_{k}": cparams[4],
                 f"a_b_{k}": cparams[5],
             }
-            if self.fluffy_grains:
-                self.parameters[component.name][f"Fluff_{k}"] = cparams[6]
+            if self.abundance_factor:
+                self.parameters[component.name][f"F_a_{k}"] = cparams[6]
 
         if self.variable_ISRF:
             self.parameters["Radiation field"] = {"RF": params[-1]}
