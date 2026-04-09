@@ -3,7 +3,6 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as pyplot
 import matplotlib
-from matplotlib.ticker import LogLocator
 from astropy.io import fits
 
 from dgfit.obsdata import ObsData
@@ -44,12 +43,14 @@ def get_krange(x, logaxis=False, in_range=[0]):
 def plot_dgfit_sizedist(
     ax,
     hdulist,
-    colors=["b", "g", "c", "r"],
+    colors=["b", "g", "c", "y"],
     fontsize=12,
     mass=True,
     plegend=True,
-    ltype="-",
+    ltype=["o-", "x-", "D-", "-"],
     alpha=1.0,
+    markers=1,
+    file="none",
 ):
     if "DISTPUNC" in hdulist[1].data.names:
         plot_uncs = True
@@ -58,6 +59,7 @@ def plot_dgfit_sizedist(
 
     yrange = [0]
     all_yvals = []
+    j = 0
     for i in range(hdulist[0].header["NCOMPS"]):
         hdu = hdulist[i + 1]
 
@@ -90,10 +92,27 @@ def plot_dgfit_sizedist(
         ax.plot(
             xvals[gindxs],
             yvals[gindxs],
-            colors[i] + ltype,
+            colors[i] + ltype[i],
+            markevery=markers,
             label=hdu.header["EXTNAME"],
             alpha=alpha,
         )
+        if file != "none":
+            length = len(xvals)
+            uppers, lowers = np.loadtxt(file, unpack=True)
+            comp_lower = lowers[j : j + length] * (hdu.data["SIZE"] ** 3)
+            comp_upper = uppers[j : j + length] * (hdu.data["SIZE"] ** 3)
+            ax.fill_between(
+                xvals,
+                comp_lower,
+                comp_upper,
+                color=colors[i],
+                alpha=0.2,
+                zorder=0,
+            )
+            j += length
+            if lowers[j] == 0.2:
+                j += 1
         if plot_uncs:
             ax.errorbar(
                 xvals[gindxs],
@@ -111,7 +130,7 @@ def plot_dgfit_sizedist(
     ymax = max(all_yvals) * 100
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_ylim(1e-5, ymax)
+    ax.set_ylim(1e-10, ymax)
     ax.set_xlabel(r"a $[\mu m]$", fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
     if plegend:
@@ -120,8 +139,19 @@ def plot_dgfit_sizedist(
 
 # plot the atomic abundances
 def plot_dgfit_abundances(
-    ax, hdu, obsdata, color="g", fontsize=12, plabel="None", plegend=False
+    ax, hdulist, obsdata, color="g", fontsize=12, plabel="None", plegend=False
 ):
+    n_comps = hdulist[0].header["NCOMPS"]
+    title = ""
+    for i in range(n_comps):
+        hdu = hdulist[i + 1]
+        fluffy = hdu.header.get(f"F_a_{i}")
+        if fluffy is not None:
+            title += rf"$F_{{a {i + 1}}}$={fluffy:.2f}"
+            if i != n_comps - 1:
+                title += ", "
+    hdu = hdulist["ABUNDANCES"]
+
     # plot the dust abundances
     atomnames = hdu.data["NAME"]
     atomabund = hdu.data["ABUND"]
@@ -145,14 +175,21 @@ def plot_dgfit_abundances(
     ax.set_ylim(0)
     ax.set_xticks(aindxs + (0.75 * width))
     ax.set_xticklabels(atomnames)
+    ax.set_title(title, fontsize=12)
 
     if plegend:
-        ax.legend()
+        ax.legend(loc="upper left")
 
 
 # plot the extinction curves (total and components)
 def plot_dgfit_extinction(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["EXT"], colors[0] + ltype)
     yrange = get_krange(hdu.data["EXT"], logaxis=True)
@@ -187,7 +224,13 @@ def plot_dgfit_extinction(
 
 # plot the emission spectra (total and components)
 def plot_dgfit_emission(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["EMIS"], colors[0] + ltype)
     yrange = get_krange(hdu.data["EMIS"], logaxis=True)
@@ -208,12 +251,22 @@ def plot_dgfit_emission(
             )
 
     if obsdata.obs_filenames["ir_emis"] is not None:
-        ax.plot(
-            obsdata.ir_emission_waves,
-            obsdata.ir_emission_av,
-            "k-",
-            label="Observed",
-        )
+        if len(obsdata.ir_emission_av) < 25:
+            ax.errorbar(
+                obsdata.ir_emission_waves,
+                obsdata.ir_emission_av,
+                yerr=obsdata.ir_emission_av_unc,
+                fmt="o",
+                label="Observed",
+                color="black",
+            )
+        else:
+            ax.plot(
+                obsdata.ir_emission_waves,
+                obsdata.ir_emission_av,
+                "k-",
+                label="Observed",
+            )
         yrange_obs = get_krange(obsdata.ir_emission_av, logaxis=True)
 
     ISRF_value = hdu.header["ISRF"]
@@ -228,10 +281,17 @@ def plot_dgfit_emission(
 
 # plot the dust scattering albedo
 def plot_dgfit_albedo(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["ALBEDO"], colors[0] + ltype)
     yrange = get_krange(hdu.data["ALBEDO"])
+    logscale = True
     if comps:
         # linetypes = ["-", "-", "-", "-", "-"]
         for i in range(len(hdu.data.names) - 2):
@@ -247,6 +307,7 @@ def plot_dgfit_albedo(
             yrange = get_krange(hdu.data["ALBEDO" + str(i + 1)], in_range=yrange)
 
     if obsdata.obs_filenames["scat_a"] is not None:
+        logscale = False
         ax.errorbar(
             obsdata.scat_a_waves,
             obsdata.scat_albedo,
@@ -255,20 +316,27 @@ def plot_dgfit_albedo(
             label="Observed",
         )
 
-    ax.set_xscale("log")
     ax.set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
     ax.set_ylabel(r"$albedo$", fontsize=fontsize)
     ax.set_xlim(get_krange(hdu.data["WAVE"], logaxis=True))
     ax.set_ylim([0.0, 1.0])
-    ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10))
+    if logscale:
+        ax.set_xscale("log")
 
 
 # plot the dust scattering phase function asymmetry
 def plot_dgfit_g(
-    ax, hdu, obsdata, colors=["r", "b", "g", "c"], fontsize=12, comps=True, ltype="-"
+    ax,
+    hdu,
+    obsdata,
+    colors=["r", "b", "g", "c", "y"],
+    fontsize=12,
+    comps=True,
+    ltype="-",
 ):
     ax.plot(hdu.data["WAVE"], hdu.data["G"], colors[0] + ltype)
     yrange = get_krange(hdu.data["G"])
+    logscale = True
     if comps:
         # linetypes = ["-", "-", "-", "-", "-"]
         for i in range(len(hdu.data.names) - 2):
@@ -284,6 +352,7 @@ def plot_dgfit_g(
             yrange = get_krange(hdu.data["G" + str(i + 1)], in_range=yrange)
 
     if obsdata.obs_filenames["scat_g"] is not None:
+        logscale = False
         ax.errorbar(
             obsdata.scat_g_waves,
             obsdata.scat_g,
@@ -292,12 +361,12 @@ def plot_dgfit_g(
             label="Observed",
         )
 
-    ax.set_xscale("log")
     ax.set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
     ax.set_ylabel(r"$g$", fontsize=fontsize)
     ax.set_xlim(get_krange(hdu.data["WAVE"], logaxis=True))
     ax.set_ylim([0.0, 1.0])
-    ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10))
+    if logscale:
+        ax.set_xscale("log")
 
 
 def main():
@@ -317,6 +386,9 @@ def main():
     parser.add_argument(
         "--start", help="include the starting model", action="store_true"
     )
+    parser.add_argument(
+        "--markeverynth", type=int, default=2, help="Put a marker every nth point"
+    )
     parser.add_argument("--smc", help="use an SMC sightline", action="store_true")
     parser.add_argument(
         "-p", "--png", help="save figure as a png file", action="store_true"
@@ -325,6 +397,9 @@ def main():
         "-e", "--eps", help="save figure as an eps file", action="store_true"
     )
     parser.add_argument("-pdf", help="save figure as a pdf file", action="store_true")
+    parser.add_argument(
+        "--priorfile", default="none", help="Data file giving the prior range"
+    )
     args = parser.parse_args()
 
     # setup the plots
@@ -346,12 +421,20 @@ def main():
     OD = ObsData(args.obsfile)
 
     # plot the dust size distributions
-    plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, plegend=True)
+    plot_dgfit_sizedist(
+        ax[0, 0],
+        hdulist,
+        fontsize=fontsize,
+        mass=True,
+        plegend=True,
+        markers=args.markeverynth,
+        file=args.priorfile,
+    )
 
     # plot the abundances
     plot_dgfit_abundances(
         ax[0, 1],
-        hdulist["ABUNDANCES"],
+        hdulist,
         OD,
         fontsize=fontsize,
         color="r",
@@ -380,11 +463,14 @@ def main():
             repstr = "best_optimizer"
         hdulist2 = fits.open(args.filename.replace(repstr, "start"))
         plot_dgfit_sizedist(
-            ax[0, 0], hdulist2, fontsize=fontsize, plegend=False, ltype="--", alpha=0.50
+            ax[0, 0],
+            hdulist2,
+            fontsize=fontsize,
+            plegend=False,
+            alpha=0.50,
+            markers=args.markeverynth,
         )
-        plot_dgfit_abundances(
-            ax[0, 1], hdulist2["ABUNDANCES"], OD, fontsize=fontsize, color="c"
-        )
+        plot_dgfit_abundances(ax[0, 1], hdulist2, OD, fontsize=fontsize, color="c")
         plot_dgfit_extinction(
             ax[1, 0], hdulist2["EXTINCTION"], OD, fontsize=fontsize, ltype="--"
         )

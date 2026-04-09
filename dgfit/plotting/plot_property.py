@@ -85,7 +85,7 @@ def main():
     args = parser.parse_args()
 
     # setup the plots
-    fontsize = 16
+    fontsize = 20
     font = {"size": fontsize}
 
     matplotlib.rc("font", **font)
@@ -97,7 +97,7 @@ def main():
     fig, ax = pyplot.subplots(
         ncols=1,
         nrows=2,
-        figsize=(15, 10),
+        figsize=(10, 10),
         sharex=True,
         gridspec_kw={"height_ratios": [3, 1]},
     )
@@ -122,6 +122,8 @@ def main():
     # get the observed data
     OD = ObsData(args.obsfile)
     rechte = []
+
+    mark = 1
 
     if args.dustproperty == "emission":
         waves = OD.ir_emission_waves
@@ -148,6 +150,7 @@ def main():
         if args.no_ylogscale:
             ylogscale = False
         ylim = False
+        mark = 100
 
     elif args.dustproperty == "albedo":
         waves = OD.scat_a_waves
@@ -206,16 +209,18 @@ def main():
             colors[i + 1] + ltype,
             label=comps[i],
             marker=markers[i],
+            markevery=mark,
         )
         yrange = get_krange(hdu.data[data_name + str(i + 1)], in_range=yrange)
 
-    ax1.errorbar(
+    ax1.plot(waves, data, "-x", color="black", label="Observed", markevery=100)
+    ax1.fill_between(
         waves,
-        data,
-        data_unc,
-        fmt="ko",
-        label="Observed",
-        capsize=3,
+        data - data_unc,
+        data + data_unc,
+        color="k",
+        alpha=0.3,
+        label="Uncertainty",
     )
 
     if args.add_fitted_line:
@@ -233,21 +238,25 @@ def main():
 
     ax1.set_ylabel(ylabel, fontsize=fontsize)
     ax1.legend()
-    # ax1.set_title("Zubko et al. (2004)")
     ax1.set_xlim(get_krange(data_waves, logaxis=xlogscale))
     ax1.set_ylim(get_krange(data, logaxis=ylogscale))
     if ylim:
         ax1.set_ylim([0.0, 1.0])
 
-    residuals = (hdu.data[data_name] - data) / data
+    residuals = (data - hdu.data[data_name]) / data
     unc = data_unc / data
-    ax2.errorbar(
+    ax2.plot(
         data_waves,
         residuals,
-        yerr=unc,
-        fmt="o",
         color="black",
-        capsize=3,
+    )
+    ax2.fill_between(
+        data_waves,
+        residuals - unc,
+        residuals + unc,
+        color="k",
+        alpha=0.3,
+        label="Uncertainty",
     )
     ax2.axhline(0, color="red", linestyle="--", linewidth=1)
     if args.inverse_lambda:

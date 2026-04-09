@@ -29,6 +29,11 @@ docs/_build
 # Pycharm editor project files
 .idea
 
+#vscode
+.vscode
+.json
+
+
 # Floobits project files
 .floo
 .flooignore
@@ -63,3 +68,5 @@ distribute-*.tar.gz
 *.fits
 *.png
 *.h5
+*.hdf5
+*.txt

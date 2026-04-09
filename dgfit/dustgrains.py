@@ -55,20 +55,17 @@ class DustGrains(object):
 
         # check that the component name is allowed
         _allowed_components = [
-            "astro-silicates",
-            "astro-carbonaceous",
-            "astro-graphite",
-            "PAH-Z04",
-            "Graphite-Z04",
-            "Silicates-Z04",
-            "ACH2-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
-            "Carbonaceous-HD23",
-            "AstroDust-HD23",
-            "a-C-Themis",
-            "a-C:H-Themis",
-            "aSil-2-Themis",
+            "Carbonaceous-LD01",
+            "Graphite-LD93",
+            "Carbonaceous-DL07",
+            "amC-ACH2-Z96",
+            "amC-BE-Z96",
+            "amC-ACAR-Z96",
+            "a-C-J16",
+            "a-C:H-J16",
+            "Silicates-DL84",
+            "AstroDust-DH21",
+            "aSil-2-D22",
         ]
         if componentname not in _allowed_components:
             print(componentname + " not one of the allowed grain components")
@@ -77,10 +74,9 @@ class DustGrains(object):
 
         # set useful quantities for each composition
         if componentname in [
-            "astro-silicates",
-            "Silicates-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
+            "Silicates-DL84",
+            "Silicates1-ZDA04",
+            "Silicates2-ZDA04",
         ]:  # from WD01
             self.density = 3.5  # g/cm^3
             self.atomic_composition = "MgFeSiO4"
@@ -90,7 +86,7 @@ class DustGrains(object):
                 np.array([24.305, 55.845, 28.0855, 15.994]) * 1.660e-24
             )  # in grams
 
-        elif componentname in ["aSil-2-Themis"]:  # from Demyk et al. 2022
+        elif componentname in ["aSil-2-D22"]:  # from Demyk et al. 2022
             self.density = 2.7  # g/cm^3
             self.atomic_composition = "MgSiO4"
             self.atomic_comp_names = ["Mg", "Si", "O", "C"]
@@ -99,49 +95,56 @@ class DustGrains(object):
                 np.array([24.305, 28.0855, 15.994, 12.0107]) * 1.660e-24
             )  # in grams
 
-        elif componentname in ["a-C-Themis"]:  # from Themis (2017)
+        elif componentname in ["a-C-J16"]:  # from Themis (2017)
             self.density = 1.6  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["a-C:H-Themis"]:  # from Themis (2017)
+        elif componentname in ["a-C:H-J16"]:  # from Themis (2017)
             self.density = 1.3  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["astro-carbonaceous", "PAH-Z04"]:  # from WD01
+        elif componentname in ["Carbonaceous-LD01"]:  # from WD01
             self.density = 2.24  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["ACH2-Z04"]:  # from Zubko 1996
+        elif componentname in ["amC-ACH2-Z96", "amC-BE-Z96"]:  # from Zubko 1996
             self.density = 1.81  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["astro-graphite", "Graphite-Z04"]:  # need origin (copy)
+        elif componentname in ["amC-ACAR-Z96"]:  # from Zubko 1996
+            self.density = 1.87  # g/cm^3
+            self.atomic_composition = "C"
+            self.atomic_comp_names = ["C"]
+            self.atomic_comp_number = np.array([1])
+            self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
+
+        elif componentname in ["Graphite-LD93"]:  # need origin (copy)
             self.density = 2.24  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["Carbonaceous-HD23"]:  # Draine et al 2021
+        elif componentname in ["Carbonaceous-DL07"]:  # Draine et al 2021
             self.density = 2.2  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["AstroDust-HD23"]:
+        elif componentname in ["AstroDust-DH21"]:
             self.density = 2.74  # g/cm^3
             self.atomic_composition = "MgFeSiO"
             self.atomic_comp_names = ["Mg", "Fe", "Si", "O"]
@@ -164,7 +167,7 @@ class DustGrains(object):
         # get the filenames of this component for all sizes
         filelist = []
         for file in glob.glob(
-            path + "INDIV-GRAINS-DGFIT_c_*" + componentname + "*.dat"
+            path + "INDIV-GRAINS-GrainBow_c_*" + componentname + "*.dat"
         ):
             m = re.search("_s_(.+?).dat", file)
             if m:
@@ -206,6 +209,7 @@ class DustGrains(object):
         self.size_dist = np.empty(self.n_sizes)
         self.stochastic_heating = np.empty(self.n_sizes)
         self.RF_strength = 1
+        self.abundance_factor = 1
 
         # loop over the files from the smallest to the largest sizes
         for k, file in enumerate(sorted(filelist, key=lambda file: file[1])):
@@ -331,6 +335,7 @@ class DustGrains(object):
         self.ISRF_field_strengths = DustGrain.ISRF_field_strengths
         self.n_ISRF_strengths = DustGrain.n_ISRF_strengths
         self.RF_strength = DustGrain.RF_strength
+        self.abundance_factor = DustGrain.abundance_factor
 
         # new values on the observed wavelength grids
         self.wavelengths = ObsData.ext_waves
@@ -358,29 +363,31 @@ class DustGrains(object):
         self.scat_g_csca = np.empty((self.n_sizes, self.n_wavelengths_scat_g))
 
         # loop over the sizes and generate grain info on the observed data grid
-        for i in range(self.n_sizes):
-            cext_interp = interp1d(DustGrain.wavelengths, DustGrain.cext[i, :])
-            cabs_interp = interp1d(DustGrain.wavelengths, DustGrain.cabs[i, :])
-            csca_interp = interp1d(DustGrain.wavelengths, DustGrain.csca[i, :])
-            self.cext[i, :] = cext_interp(self.wavelengths)
-            self.cabs[i, :] = cabs_interp(self.wavelengths)
-            self.csca[i, :] = csca_interp(self.wavelengths)
+        self.cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(
+            self.wavelengths
+        )
+        self.cabs = interp1d(DustGrain.wavelengths, DustGrain.cabs, axis=1)(
+            self.wavelengths
+        )
+        self.csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(
+            self.wavelengths
+        )
+        self.scat_a_cext = interp1d(DustGrain.wavelengths, DustGrain.cext, axis=1)(
+            self.wavelengths_scat_a
+        )
+        self.scat_a_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(
+            self.wavelengths_scat_a
+        )
+        self.scat_g = interp1d(DustGrain.wavelengths, DustGrain.scat_g, axis=1)(
+            self.wavelengths_scat_g
+        )
+        self.scat_g_csca = interp1d(DustGrain.wavelengths, DustGrain.csca, axis=1)(
+            self.wavelengths_scat_g
+        )
+        self.emission = interp1d(
+            DustGrain.wavelengths_emission, DustGrain.emission, axis=2
+        )(self.wavelengths_emission)
 
-            self.scat_a_cext[i, :] = cext_interp(self.wavelengths_scat_a)
-            self.scat_a_csca[i, :] = csca_interp(self.wavelengths_scat_a)
-
-            g_interp = interp1d(DustGrain.wavelengths, DustGrain.scat_g[i, :])
-            self.scat_g[i, :] = g_interp(self.wavelengths_scat_g)
-            self.scat_g_csca[i, :] = csca_interp(self.wavelengths_scat_g)
-
-            emission_interp = interp1d(
-                DustGrain.wavelengths_emission, DustGrain.emission[:, i, :]
-            )
-            self.emission[:, i, :] = emission_interp(self.wavelengths_emission)
-
-    # function to integrate this component
-    # returns the effective/total cabs, csca, etc.
-    # these are normalized to A(V)
     def eff_grain_props(self, ObsData, predict_all=False):
         """
         Calculate the grain properties integrated over the size distribution
@@ -397,7 +404,7 @@ class DustGrains(object):
            Scattering cross section
 
         Abundances : ('list', 'numpy.ndarray') named 'natoms'
-           Tuple with (atomic elements, # per/10^6 H atoms
+           Tuple with (atomic elements, # per/10^6 H atoms)
 
         Emission : 'numpy.ndarray' named 'emission'
            IR emission
@@ -432,23 +439,24 @@ class DustGrains(object):
         deltas = 0.5 * (self.sizes[1 : self.n_sizes] - self.sizes[0 : self.n_sizes - 1])
         sizedist1 = self.size_dist[0 : self.n_sizes - 1]
         sizedist2 = self.size_dist[1 : self.n_sizes]
-        for i in range(self.n_wavelengths):
-            _effcabs[i] = np.sum(
-                deltas
-                * (
-                    (self.cabs[0 : self.n_sizes - 1, i] * sizedist1)
-                    + (self.cabs[1 : self.n_sizes, i] * sizedist2)
-                )
-            )
-            _effcsca[i] = np.sum(
-                deltas
-                * (
-                    (self.csca[0 : self.n_sizes - 1, i] * sizedist1)
-                    + (self.csca[1 : self.n_sizes, i] * sizedist2)
-                )
-            )
+        _effcabs = np.sum(
+            deltas[:, None]
+            * (
+                self.cabs[:-1, :] * sizedist1[:, None]
+                + self.cabs[1:, :] * sizedist2[:, None]
+            ),
+            axis=0,
+        )
+        _effcsca = np.sum(
+            deltas[:, None]
+            * (
+                self.csca[:-1, :] * sizedist1[:, None]
+                + self.csca[1:, :] * sizedist2[:, None]
+            ),
+            axis=0,
+        )
 
-            # *not* faster to use numexpr (tested in 2015)
+        # *not* faster to use numexpr (tested in 2015)
 
         results["cabs"] = _effcabs
         results["csca"] = _effcsca
@@ -457,10 +465,10 @@ class DustGrains(object):
         _natoms = np.empty(len(self.atomic_comp_names))
         for i in range(len(self.atomic_comp_names)):
             if self.name in [
-                "a-C:H-Themis",
-                "aSil-2-Themis",
+                "a-C:H-J16",
+                "aSil-2-J16",
             ]:  # correct for the mantles of Themis
-                if self.name == "a-C:H-Themis":
+                if self.name == "a-C:H-J16":
                     mantle = 5 * 1e-7
                     indices = np.where(self.sizes <= mantle)[0]
                     best_index = indices[np.argmax(self.sizes[indices])] + 1
@@ -608,6 +616,8 @@ class DustGrains(object):
                     )
                 )
 
+            _natoms[i] *= self.abundance_factor
+
         results["natoms"] = dict(zip(self.atomic_comp_names, _natoms))
 
         # compute the integrated emission spectrum for the right ISRF strength
@@ -722,3 +732,31 @@ class DustGrains(object):
         emission = interpolation(ISRF)
 
         return emission
+
+    def calculate_contribution_per_size(self, ObsData, predict_all=False):
+        # output is a dictonary
+        results = {}
+        sizes = self.sizes
+        n_sizes = len(sizes)
+        delta = sizes[1:n_sizes] - sizes[0 : n_sizes - 1]
+        delta = np.append(delta, delta[-1])
+
+        # reshape size weights for broadcasting
+        corrected_sd = self.size_dist * delta
+        weights = corrected_sd[:, None]  # (n_sizes, 1)
+
+        _effcabs = self.cabs * weights
+        _effcsca = self.csca * weights
+
+        results["cabs"] = _effcabs
+        results["csca"] = _effcsca
+
+        # compute the integrated emission spectrum for the right ISRF strength
+        if ObsData.fit_ir_emission or predict_all:
+            # Calculate the emission for the used radaiation field
+            interpolated_emission = self.interpol_emission(self.RF_strength)
+            _emission = interpolated_emission * weights
+
+            results["emission"] = _emission
+
+        return results

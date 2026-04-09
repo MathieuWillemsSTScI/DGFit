@@ -7,7 +7,6 @@ import numpy as np
 from matplotlib.cm import ScalarMappable
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm
-from matplotlib.ticker import LogLocator
 
 from dgfit.obsdata import ObsData
 from dgfit.dustgrains import DustGrains
@@ -21,22 +20,19 @@ def main():
         "-c",
         "--composition",
         choices=[
-            "astro-silicates",
-            "astro-carbonaceous",
-            "astro-graphite",
-            "PAH-Z04",
-            "Graphite-Z04",
-            "Silicates-Z04",
-            "ACH2-Z04",
-            "Silicates1-Z04",
-            "Silicates2-Z04",
-            "Carbonaceous-HD23",
-            "AstroDust-HD23",
-            "a-C-Themis",
-            "a-C:H-Themis",
-            "aSil-2-Themis",
+            "Carbonaceous-LD01",
+            "Graphite-LD93",
+            "Carbonaceous-DL07",
+            "amC-ACH2-Z96",
+            "amC-BE-Z96",
+            "amC-ACAR-Z96",
+            "a-C-J16",
+            "a-C:H-J16",
+            "Silicates-DL84",
+            "AstroDust-DH21",
+            "aSil-2-D22",
         ],
-        default="astro-silicates",
+        default="Carbonaceous-LD01",
         help="Grain composition",
     )
     parser.add_argument(
@@ -57,6 +53,7 @@ def main():
     args = parser.parse_args()
 
     DG = DustGrains()
+    logscale = True
     ref = importlib_resources.files("dgfit") / "data"
     with importlib_resources.as_file(ref) as data_path:
         DG.from_files(
@@ -70,11 +67,12 @@ def main():
         new_DG = DustGrains()
         new_DG.from_object(DG, OD)
         DG = new_DG
+        logscale = False
 
-    plot(DG, args.composition, args.ISRF, args.png, args.eps, args.pdf)
+    plot(DG, args.composition, args.ISRF, logscale, args.png, args.eps, args.pdf)
 
 
-def plot(DG, composition, ISRF, png=False, eps=False, pdf=False):
+def plot(DG, composition, ISRF, logscale, png=False, eps=False, pdf=False):
     # setup the plots
     fontsize = 12
     font = {"size": fontsize}
@@ -93,7 +91,7 @@ def plot(DG, composition, ISRF, png=False, eps=False, pdf=False):
 
     num_segments = DG.n_sizes
     DG.sizes *= 10**4
-    cmap = get_cmap("jet", num_segments)
+    cmap = get_cmap("gist_rainbow", num_segments)
     norm = LogNorm(vmin=min(DG.sizes), vmax=max(DG.sizes))
     colors = [cmap(i) for i in range(num_segments)]
 
@@ -126,18 +124,14 @@ def plot(DG, composition, ISRF, png=False, eps=False, pdf=False):
         )
         ax[1, 0].set_xlabel(r"$\lambda$ [$\mu m$]")
         ax[1, 0].set_ylabel("albedo")
-        ax[1, 0].set_xscale("log")
-        ax[1, 0].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
+        if logscale:
+            ax[1, 0].set_xscale("log")
 
         ax[1, 1].plot(DG.wavelengths_scat_g, DG.scat_g[i, :], "o", color=pcolor)
         ax[1, 1].set_xlabel(r"$\lambda$ [$\mu m$]")
         ax[1, 1].set_ylabel("g")
-        ax[1, 1].set_xscale("log")
-        ax[1, 1].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
+        if logscale:
+            ax[1, 1].set_xscale("log")
 
         emission = DG.interpol_emission(ISRF)
 

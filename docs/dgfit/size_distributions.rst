@@ -13,8 +13,8 @@ separate parameter.  The total number of parameters is equal to the
 sum of the number of size distributions for all the different grain
 compositions.
 
-MRN
-===
+MRN77
+=====
 
 The commonly used `Mathis, Rumpl, & Nordsieck (1977)
 <https://ui.adsabs.harvard.edu/abs/1977ApJ...217..425M/abstract>`_
@@ -41,12 +41,12 @@ and :math:`a_{max} = 2~\mu m` is shown below.
     import numpy as np
     import matplotlib.pyplot as plt
 
-    from dgfit.dustmodel import MRNDustModel
+    from dgfit.dustmodel import MRN77DustModel
 
     fig, ax = plt.subplots()
 
     # simple intialization to get the MRN size distribution function
-    dmodel = MRNDustModel()
+    dmodel = MRN77DustModel()
 
     # size distributions in cm
     a = np.logspace(np.log10(3.5), np.log10(2e4), num=200)*1e-8
@@ -54,7 +54,7 @@ and :math:`a_{max} = 2~\mu m` is shown below.
     # default size distribution parameters
     cparams = [1e-25, 3.5, 1e-7, 1e-3]
 
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "Silicates-DL84")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -77,12 +77,12 @@ by multiplying by :math:`a^4`.
     import numpy as np
     import matplotlib.pyplot as plt
 
-    from dgfit.dustmodel import MRNDustModel
+    from dgfit.dustmodel import MRN77DustModel
 
     fig, ax = plt.subplots()
 
     # simple intialization to get the MRN size distribution function
-    dmodel = MRNDustModel()
+    dmodel = MRN77DustModel()
 
     # size distributions in cm
     a = np.logspace(np.log10(3.5), np.log10(2e4), num=200)*1e-8
@@ -90,7 +90,7 @@ by multiplying by :math:`a^4`.
     # default size distribution parameters
     cparams = [1e-25, 3.5, 1e-7, 1e-3]
 
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "Silicates-DL84")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -104,8 +104,8 @@ by multiplying by :math:`a^4`.
     plt.tight_layout()
     plt.show()
 
-WD
-==
+WD01
+====
 
 `Weingartner & Draine (2001)
 <https://ui.adsabs.harvard.edu/abs/2001ApJ...548..296W/abstract>`_
@@ -181,19 +181,19 @@ For the carbonaceous grains :math:`C = 4.15\times 10^{-11}`,
     import numpy as np
     import matplotlib.pyplot as plt
 
-    from dgfit.dustmodel import WDDustModel
+    from dgfit.dustmodel import WD01DustModel
 
     fig, ax = plt.subplots()
 
     # simple intialization to get the WD size distribution function
-    dmodel = WDDustModel()
+    dmodel = WD01DustModel()
 
     # size distributions in cm
     a = np.logspace(np.log10(3.5), np.log10(2e4), num=200)*1e-8
 
     # silicate size distribution parameters
     cparams = [1.33e-12, 0.171e4, -1.41, -11.5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "Silicates-DL84")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -201,7 +201,7 @@ For the carbonaceous grains :math:`C = 4.15\times 10^{-11}`,
 
     # carbonaceous size distribution parameters
     cparams = [4.15e-11, 0.00837e4, -1.91, -0.125, 0.499e4, 3.0e-5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "Carbonaceous-LD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -227,19 +227,19 @@ by multiplying by :math:`a^4`.
     import numpy as np
     import matplotlib.pyplot as plt
 
-    from dgfit.dustmodel import WDDustModel
+    from dgfit.dustmodel import WD01DustModel
 
     fig, ax = plt.subplots()
 
     # simple intialization to get the WD size distribution function
-    dmodel = WDDustModel()
+    dmodel = WD01DustModel()
 
     # size distributions in cm
     a = np.logspace(np.log10(3.5), np.log10(2e4), num=200)*1e-8
 
     # silicate size distribution parameters
     cparams = [1.33e-12, 0.171e4, -1.41, -11.5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "Silicates-DL84")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)
@@ -247,7 +247,7 @@ by multiplying by :math:`a^4`.
 
     # carbonaceous size distribution parameters
     cparams = [4.15e-11, 0.00837e4, -1.91, -0.125, 0.499e4, 3.0e-5]
-    sizedist = dmodel.compute_size_dist(a, cparams)
+    sizedist = dmodel.compute_size_dist(a, cparams, "Carbonaceous-LD01")
 
     # plot the nonzero sizedistribution values
     indxs, = np.where(sizedist > 0)

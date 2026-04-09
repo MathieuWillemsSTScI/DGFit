@@ -1,0 +1,4 @@
+# type filename
+avnhi   data/SMC_Average_Gordon24_avnhi.dat
+ext     data/SMC_Average_Gordon24_ext.dat
+ir_emis data/SMC_Average_DGFIT1_ir_emission.dat

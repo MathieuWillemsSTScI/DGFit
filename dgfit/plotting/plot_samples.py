@@ -1,28 +1,22 @@
 from __future__ import print_function
 
 import argparse
-
-import numpy as np
-
-# import matplotlib.pyplot as pyplot
-# import matplotlib
-
 import corner
+import h5py  # for HDF5 support
 
 
 def main():
-
-    # commandline parser
     parser = argparse.ArgumentParser()
-    parser.add_argument("filename", help=("file with EMCEE sampler chain"))
+    parser.add_argument("filename", help=("file with EMCEE sampler chain (.h5)"))
     args = parser.parse_args()
 
-    samples_data = np.loadtxt(args.filename)
+    # open the .h5 file
+    with h5py.File(args.filename, "r") as f:
+        samples_data = f["mcmc"]["chain"][:]
+        nsteps, nwalkers, nparams = samples_data.shape
 
-    nparam = len(samples_data[0, :]) - 1
-    samples = samples_data[:, 1 : nparam + 1]
+    samples = samples_data.reshape((-1, nparams))
 
-    # samples = np.log10(samples[:, ::5])
     print(samples.shape)
 
     fig = corner.corner(samples)

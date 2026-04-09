@@ -18,7 +18,7 @@ For example, to plot the default run results from the optimizer (= max prob):
 
 .. code-block:: console
 
-    plot_dgfit dgfit_test_WD_best_optimizer.fits obsdata
+    plot_dgfit WD01_grains_all_points_WD_sizedist_best_optimizer.fits obsdata
 
 .. plot::
 
@@ -35,7 +35,7 @@ For example, to plot the default run results from the optimizer (= max prob):
     from astropy.io import fits
 
     OD = ObsData("mw_rv31_obs.dat", path = "../../dgfit/data/mw_rv31/")
-    hdulist = fits.open("../../dgfit/data/mw_rv31/dgfit_test_WD_sizedist_best_optimizer.fits")
+    hdulist = fits.open("../../dgfit/data/mw_rv31/WD01_grains_all_points_WD_sizedist_best_optimizer.fits")
 
     fontsize = 16
     font = {"size": fontsize}
@@ -50,7 +50,7 @@ For example, to plot the default run results from the optimizer (= max prob):
     plot_dgfit_sizedist(ax[0, 0], hdulist, fontsize=fontsize, plegend=True)
     plot_dgfit_abundances(
         ax[0, 1],
-        hdulist["ABUNDANCES"],
+        hdulist,
         OD,
         fontsize=fontsize,
         color="r",
@@ -68,7 +68,7 @@ To include the starting points
 
 .. code-block:: console
 
-    plot_dgfit dgfit_test_WD_best_optimizer.fits obsdata --start
+    plot_dgfit WD01_grains_all_points_WD_sizedist_best_optimizer.fits obsdata --start
 
 
 To see an overview of the observed data used, use

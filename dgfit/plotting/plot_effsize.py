@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import importlib.resources as importlib_resources
 
-from dgfit.dustmodel import DustModel, WDDustModel
+from dgfit.dustmodel import DustModel, WD01DustModel
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
     args = parser.parse_args()
 
     # get the dust model on the full wavelength grid
-    compnames = ["astro-silicates", "astro-carbonaceous"]
+    compnames = ["Silicates-DL84", "Carbonaceous-LD01"]
     ref = importlib_resources.files("dgfit") / "data"
     with importlib_resources.as_file(ref) as data_path:
         dustmodel_full = DustModel(
@@ -31,7 +31,7 @@ def main():
         )
 
     # WD model
-    dustmodel = WDDustModel(dustmodel=dustmodel_full)
+    dustmodel = WD01DustModel(dustmodel=dustmodel_full)
 
     plot(dustmodel, args.png, args.pdf, args.eps)
 
@@ -41,8 +41,8 @@ def plot(dustmodel, png=False, pdf=False, eps=False):
     # set size distributions
     p0 = []
     for component in dustmodel.components:
-        if component.name == "astro-silicates":
-            cparams = dustmodel.parameters["astro-silicates"]
+        if component.name == "Silicates-DL84":
+            cparams = dustmodel.parameters["Silicates-DL84"]
             p0 += [
                 cparams["C_s"],
                 cparams["a_ts"],
@@ -50,7 +50,7 @@ def plot(dustmodel, png=False, pdf=False, eps=False):
                 cparams["beta_s"],
             ]
         else:
-            cparams = dustmodel.parameters["astro-carbonaceous"]
+            cparams = dustmodel.parameters["Carbonaceous-LD01"]
             p0 += [
                 cparams["C_g"],
                 cparams["a_tg"],

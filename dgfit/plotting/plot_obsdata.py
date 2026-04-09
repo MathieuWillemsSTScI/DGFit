@@ -6,7 +6,6 @@ import importlib.resources as importlib_resources
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.ticker import LogLocator
 
 from astropy.table import Table
 
@@ -21,7 +20,7 @@ def main():
         "obsdata", type=str, default="none", help="give the file with the observed data"
     )
     parser.add_argument(
-        "--ISRF", type=str, default="none", help="Add the ISFR file to plot"
+        "--ISRF", nargs="+", default="none", help="Add the ISFR file to plot"
     )
     parser.add_argument(
         "--units",
@@ -54,39 +53,49 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
 
     fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(15, 10))
 
-    n_atoms = len(OD.abundance)
-    aindxs = np.arange(n_atoms)
-    width = 0.5
-    atomnames = sorted(list(OD.abundance.keys()))
+    if OD.obs_filenames["abund"] is not None:
+        n_atoms = len(OD.abundance)
+        aindxs = np.arange(n_atoms)
+        width = 0.5
+        atomnames = sorted(list(OD.abundance.keys()))
 
     if units == "AV":
-        ax[0, 0].errorbar(
-            OD.ext_waves,
-            OD.ext_alav,
-            yerr=OD.ext_alav_unc,
-            fmt="-",
-            label="Extinction",
-            color="blue",
-        )
-        ax[0, 0].set_ylabel(r"$A(\lambda)/A(V)$")
+        if OD.fit_extinction:
+            ax[0, 0].errorbar(
+                OD.ext_waves,
+                OD.ext_alav,
+                yerr=OD.ext_alav_unc,
+                fmt="-",
+                label="Extinction",
+                color="blue",
+            )
+            ax[0, 0].set_ylabel(r"$A(\lambda)/A(V)$")
+            ax[0, 0].set_xlabel(r"$\lambda [\mu m]$")
+            ax[0, 0].set_yscale("log")
+            ax[0, 0].set_xscale("log")
+            ax[0, 0].legend()
 
-        ax[1, 0].bar(
-            aindxs + 0.75 * width,
-            [OD.total_abundance_av[x][0] for x in atomnames],
-            width,
-            color="black",
-            alpha=0.25,
-            label="gas+dust",
-        )
-        ax[1, 0].errorbar(
-            aindxs + 0.75 * width,
-            [OD.abundance_av[x][0] for x in atomnames],
-            yerr=[OD.abundance_av[x][1] for x in atomnames],
-            fmt="o",
-            label="dust",
-            color="blue",
-        )
-        ax[1, 0].set_ylabel(r"$N(X)/A(V)$", fontsize=fontsize)
+        if OD.fit_abundance:
+            ax[1, 0].bar(
+                aindxs + 0.75 * width,
+                [OD.total_abundance_av[x][0] for x in atomnames],
+                width,
+                color="black",
+                alpha=0.25,
+                label="gas+dust",
+            )
+            ax[1, 0].errorbar(
+                aindxs + 0.75 * width,
+                [OD.abundance_av[x][0] for x in atomnames],
+                yerr=[OD.abundance_av[x][1] for x in atomnames],
+                fmt="o",
+                label="dust",
+                color="blue",
+            )
+            ax[1, 0].set_ylabel(r"$N(X)/A(V)$", fontsize=fontsize)
+            ax[1, 0].set_xticks(aindxs + (0.75 * width))
+            ax[1, 0].set_xticklabels(atomnames)
+            ax[1, 0].legend(loc=2)
 
         if OD.fit_ir_emission:
             ax[0, 1].errorbar(
@@ -105,33 +114,42 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             ax[0, 1].legend(loc=2)
 
     elif units == "NHI":
-        ax[0, 0].errorbar(
-            OD.ext_waves,
-            OD.ext_alnhi,
-            yerr=OD.ext_alnhi_unc,
-            fmt="o",
-            label="Extinction",
-            color="blue",
-        )
-        ax[0, 0].set_ylabel(r"$A(\lambda)/N(HI)$")
+        if OD.fit_extinction:
+            ax[0, 0].errorbar(
+                OD.ext_waves,
+                OD.ext_alnhi,
+                yerr=OD.ext_alnhi_unc,
+                fmt="o",
+                label="Extinction",
+                color="blue",
+            )
+            ax[0, 0].set_ylabel(r"$A(\lambda)/N(HI)$")
+            ax[0, 0].set_xlabel(r"$\lambda [\mu m]$")
+            ax[0, 0].set_yscale("log")
+            ax[0, 0].set_xscale("log")
+            ax[0, 0].legend()
 
-        ax[1, 0].bar(
-            aindxs + 0.75 * width,
-            [OD.total_abundance[x][0] for x in atomnames],
-            width,
-            color="g",
-            alpha=0.25,
-            label="gas+dust",
-        )
-        ax[1, 0].errorbar(
-            aindxs + 0.75 * width,
-            [OD.abundance[x][0] for x in atomnames],
-            yerr=[OD.abundance[x][1] for x in atomnames],
-            fmt="o",
-            label="dust",
-            color="blue",
-        )
-        ax[1, 0].set_ylabel(r"$N(X)/[10^6N(HI)]$", fontsize=fontsize)
+        if OD.fit_abundance:
+            ax[1, 0].bar(
+                aindxs + 0.75 * width,
+                [OD.total_abundance[x][0] for x in atomnames],
+                width,
+                color="g",
+                alpha=0.25,
+                label="gas+dust",
+            )
+            ax[1, 0].errorbar(
+                aindxs + 0.75 * width,
+                [OD.abundance[x][0] for x in atomnames],
+                yerr=[OD.abundance[x][1] for x in atomnames],
+                fmt="o",
+                label="dust",
+                color="blue",
+            )
+            ax[1, 0].set_ylabel(r"$N(X)/[10^6N(HI)]$", fontsize=fontsize)
+            ax[1, 0].set_xticks(aindxs + (0.75 * width))
+            ax[1, 0].set_xticklabels(atomnames)
+            ax[1, 0].legend(loc=2)
 
         if OD.fit_ir_emission:
             ax[0, 1].errorbar(
@@ -149,27 +167,26 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             ax[0, 1].set_yscale("log")
             ax[0, 1].legend(loc=2)
 
-    ax[0, 0].set_xlabel(r"$\lambda [\mu m]$")
-    ax[0, 0].set_yscale("log")
-    ax[0, 0].set_xscale("log")
-    ax[0, 0].legend()
-
-    ax[1, 0].set_xticks(aindxs + (0.75 * width))
-    ax[1, 0].set_xticklabels(atomnames)
-    ax[1, 0].legend(loc=2)
-
     if ISRF != "none":
-        ref = importlib_resources.files("dgfit") / ISRF
-        with importlib_resources.as_file(ref) as data_path:
-            t = Table.read(str(data_path), format="ascii.commented_header")
-        ax[1, 1].plot(t["wave"], t["ISRF"], "-", label="ISRF", color="blue")
-        ax[1, 1].set_xlabel(r"$\lambda [\mu m]$")
-        ax[1, 1].set_ylabel(r"ISRF [$ergs$ $cm^{-3}$ $s^{-1}$ $sr^{-1}$]")
-        ax[1, 1].set_xscale("log")
-        ax[1, 1].set_yscale("log")
-        ax[1, 1].set_xlim(0.09, 1e1)
-        ax[1, 1].set_ylim(1e-2, 1e2)
-        ax[1, 1].legend()
+        colors = ["b", "r"]
+        i = 0
+        for field in ISRF:
+            ref = importlib_resources.files("dgfit") / field
+            with importlib_resources.as_file(ref) as data_path:
+                t = Table.read(str(data_path), format="ascii.commented_header")
+            waves = t["wave"]
+            if waves[0] < 0.001:
+                waves *= 1e4
+                t["ISRF"] *= 10
+            ax[1, 1].plot(waves, t["ISRF"], "-", label="ISRF", color=colors[i])
+            ax[1, 1].set_xlabel(r"$\lambda [\mu m]$")
+            ax[1, 1].set_ylabel(r"ISRF [$ergs$ $cm^{-3}$ $s^{-1}$ $sr^{-1}$]")
+            ax[1, 1].set_xscale("log")
+            ax[1, 1].set_yscale("log")
+            ax[1, 1].set_xlim(0.09, 1e1)
+            ax[1, 1].set_ylim(1e-2, 1e2)
+            ax[1, 1].legend()
+            i += 1
 
     if OD.fit_scat_a:
         ax[0, 2].errorbar(
@@ -181,13 +198,9 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
             color="blue",
         )
         ax[0, 2].set_xlabel(r"$\lambda [\mu m]$")
-        ax[0, 2].set_ylabel(r"$a$")
-        ax[0, 2].set_xscale("log")
+        ax[0, 2].set_ylabel(r"$\alpha$")
         ax[0, 2].set_ylim(0.0, 1.0)
-        ax[0, 2].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
-        ax[0, 2].legend()
+        ax[0, 2].legend(loc="lower right")
 
     if OD.fit_scat_g:
         ax[1, 2].errorbar(
@@ -200,11 +213,7 @@ def plot(OD, ISRF="none", units="AV", png=False, eps=False, pdf=False):
         )
         ax[1, 2].set_xlabel(r"$\lambda [\mu m]$")
         ax[1, 2].set_ylabel(r"$g$")
-        ax[1, 2].set_xscale("log")
         ax[1, 2].set_ylim(0.0, 1.0)
-        ax[1, 2].xaxis.set_minor_locator(
-            LogLocator(base=10.0, subs=[2.0, 4.0], numticks=10)
-        )
         ax[1, 2].legend()
 
     plt.tight_layout()

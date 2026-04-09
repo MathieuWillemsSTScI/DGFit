@@ -70,8 +70,10 @@ class ObsData(object):
             self.ext_alav = self.ext_alav[sindxs]
             self.ext_alav_unc = self.ext_alav_unc[sindxs]
             self.ext_type = self.ext_type[sindxs]
+            self.ext_npts = len(self.ext_alav)
         else:
             self.ext_waves = np.logspace(np.log10(0.0912), np.log10(32.0), 200)
+            self.ext_npts = 0
 
         # dust abundances
         self.fit_abundance = False
@@ -89,6 +91,8 @@ class ObsData(object):
                     t["total_abund_unc"][i],
                 )
             self.abundance_npts = len(self.abundance)
+        else:
+            self.abundance_npts = 0
 
         # diffuse IR emission spectrum
         self.fit_ir_emission = False
@@ -110,8 +114,10 @@ class ObsData(object):
             self.ir_emission_waves = self.ir_emission_waves[sindxs]
             self.ir_emission = self.ir_emission[sindxs]
             self.ir_emission_unc = self.ir_emission_unc[sindxs]
+            self.ir_emission_npts = len(self.ir_emission)
         else:
             self.ir_emission_waves = np.logspace(np.log10(1.0), np.log10(500.0), 100)
+            self.ir_emission_npts = 0
 
         # dust albedo (Gordon et al. 2004 AoD proceedings)
         self.fit_scat_a = False
@@ -135,12 +141,14 @@ class ObsData(object):
             self.scat_g_waves = np.array(t["wave"])
             self.scat_g = np.array(t["g"])
             self.scat_g_unc = np.array(t["unc"])
+            self.scat_a_npts = len(self.scat_albedo)
+            self.scat_g_npts = len(self.scat_g)
 
         else:
             self.scat_a_waves = np.logspace(np.log10(0.1), np.log10(5.0), 100)
             self.scat_g_waves = np.logspace(np.log10(0.1), np.log10(5.0), 100)
-        self.scat_a_npts = len(self.scat_albedo)
-        self.scat_g_npts = len(self.scat_g)
+            self.scat_a_npts = 0
+            self.scat_g_npts = 0
 
         # normalization from N(HI) to A(V) for emission and abundance data
         if self.obs_filenames["avnhi"] is not None:
@@ -159,9 +167,9 @@ class ObsData(object):
             self.ir_emission_av_unc = self.ir_emission_av * np.sqrt(
                 np.square(rel_ir_emission_unc) + np.square(avnhi_rel_unc)
             )
-            self.ir_emission_npts = len(self.ir_emission_av)
 
             # abundance conversion
+        if self.obs_filenames["abund"] is not None:
             self.abundance_av = {}
             self.total_abundance_av = {}
             for key in self.abundance.keys():
@@ -192,7 +200,6 @@ class ObsData(object):
                 self.ext_alav_unc / self.ext_alav
             ) + np.square(avnhi_rel_unc)
             self.ext_alnhi_unc = self.ext_alnhi * np.sqrt(self.ext_alnhi_unc)
-            self.ext_npts = len(self.ext_alnhi)
 
     def parse_obsfile(self, obs_filename):
         """

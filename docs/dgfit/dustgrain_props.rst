@@ -20,11 +20,11 @@ To plot the extinction coefficients, albedo, scattering phase function and emiss
     from dgfit.plotting.plot_dustgrains import plot
 
     DG = DustGrains()
-    DG.from_files("astro-silicates", "../../dgfit/data/indiv_grain/")
+    DG.from_files("Silicates-DL84", "../../dgfit/data/indiv_grain/")
 
-    plot(DG, 'astro-silicates', 1)
+    plot(DG, 'Silicates-DL84', 1, True)
 
-To see other dustgrains (<possible> = astro-silicates, astro-carbonaceous, astro-graphite, astro-PAH-ionized and astro-PAH-neutral), use
+To see other dustgrains, use
 
 .. code-block:: console
 
@@ -53,14 +53,14 @@ To plot the average dustgrain size in function of wavelength for both extinction
 
 .. plot::
 
-    from dgfit.dustmodel import DustModel, WDDustModel
+    from dgfit.dustmodel import DustModel, WD01DustModel
     from dgfit.dustgrains import DustGrains
     from dgfit.plotting.plot_effsize import plot
     
-    compnames = ["astro-silicates", "astro-carbonaceous"]
+    compnames = ["Silicates-DL84", "Carbonaceous-LD01"]
 
     DustM = DustModel(componentnames=compnames, path="../../dgfit/data/indiv_grain/", dustmodel=None, obsdata=None, every_nth=2)
-    model = WDDustModel(dustmodel=DustM)
+    model = WD01DustModel(dustmodel=DustM)
 
     plot(model)
 
@@ -83,9 +83,9 @@ To make this plot, use
     from dgfit.plotting.plot_singlegrain_props import plot
 
     DG = DustGrains()
-    DG.from_files("astro-silicates", "../../dgfit/data/indiv_grain/", every_nth=1)
+    DG.from_files("Silicates-DL84", "../../dgfit/data/indiv_grain/", every_nth=1)
 
-    plot(DG, 10, 'astro-silicates', 1)
+    plot(DG, 10, 'Silicates-DL84', 1)
 
 The default wavelength for these plots is 0.1 micron. 
 To choose another wavelength (with the wavelength given in micron), use
@@ -122,9 +122,9 @@ To make this plot, use
     from dgfit.plotting.plot_rv import plot
 
     DG = DustGrains()
-    DG.from_files("astro-silicates", "../../dgfit/data/indiv_grain/", every_nth=1)
+    DG.from_files("Silicates-DL84", "../../dgfit/data/indiv_grain/", every_nth=1)
 
-    plot(DG, 10, 'astro-silicates')
+    plot(DG, 10, 'Silicates-DL84')
 
 The default wavelength for these plots is 0.1 micron. 
 To choose another wavelength (with the wavelength given in micron), use
