@@ -62,6 +62,9 @@ def DGFit_cmdparser():
             "Silicates-DL84",
             "AstroDust-DH21",
             "aSil-2-D22",
+            "DarkDust-S23",
+            "X50A-E20R-D22",
+
         ],
         help="Which grains to use",
     )

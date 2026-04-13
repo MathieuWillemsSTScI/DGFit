@@ -33,6 +33,8 @@ def main():
             "Silicates-DL84",
             "AstroDust-DH21",
             "aSil-2-D22",
+            "DarkDust-S23",
+            "X50A-E20R-D22",
         ],
         default="astro-silicates-WD01",
         help="Grain composition",

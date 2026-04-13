@@ -66,6 +66,8 @@ class DustGrains(object):
             "Silicates-DL84",
             "AstroDust-DH21",
             "aSil-2-D22",
+            "DarkDust-S23",
+            "X50A-E20R-D22",
         ]
         if componentname not in _allowed_components:
             print(componentname + " not one of the allowed grain components")
@@ -75,8 +77,6 @@ class DustGrains(object):
         # set useful quantities for each composition
         if componentname in [
             "Silicates-DL84",
-            "Silicates1-ZDA04",
-            "Silicates2-ZDA04",
         ]:  # from WD01
             self.density = 3.5  # g/cm^3
             self.atomic_composition = "MgFeSiO4"
@@ -109,7 +109,7 @@ class DustGrains(object):
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["Carbonaceous-LD01"]:  # from WD01
+        elif componentname in ["Carbonaceous-LD01"]:  # from LD01
             self.density = 2.24  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
@@ -130,14 +130,14 @@ class DustGrains(object):
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["Graphite-LD93"]:  # need origin (copy)
-            self.density = 2.24  # g/cm^3
+        elif componentname in ["Graphite-LD93"]:  # from LD93
+            self.density = 2.26  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
             self.atomic_comp_number = np.array([1])
             self.atomic_comp_masses = np.array([12.0107]) * 1.660e-24  # in grams
 
-        elif componentname in ["Carbonaceous-DL07"]:  # Draine et al 2021
+        elif componentname in ["Carbonaceous-DL07"]:  # DL07
             self.density = 2.2  # g/cm^3
             self.atomic_composition = "C"
             self.atomic_comp_names = ["C"]
@@ -149,6 +149,24 @@ class DustGrains(object):
             self.atomic_composition = "MgFeSiO"
             self.atomic_comp_names = ["Mg", "Fe", "Si", "O"]
             self.atomic_comp_number = np.array([1.3, 0.3, 1, 3.6])
+            self.atomic_comp_masses = (
+                np.array([24.305, 55.845, 28.0855, 15.994]) * 1.660e-24
+            )  # in grams
+
+        elif componentname in ["DarkDust-S23"]:
+            self.density = 1.72  # g/cm^3
+            self.atomic_composition = "MgFeSiOC"
+            self.atomic_comp_names = ["Mg", "Fe", "Si", "O", "C"]
+            self.atomic_comp_number = np.array([0.255, 0.003, 0.258, 0.773, 0.3])
+            self.atomic_comp_masses = (
+                np.array([24.305, 55.845, 28.0855, 15.994, 12.0107]) * 1.660e-24
+            )  # in grams
+
+        elif componentname in ["X50A-E20R-D22"]:
+            self.density = 2.71  # g/cm^3
+            self.atomic_composition = "MgFeSiO"
+            self.atomic_comp_names = ["Mg", "Fe", "Si", "O"]
+            self.atomic_comp_number = np.array([0.509, 0.006, 0.515, 1.545])
             self.atomic_comp_masses = (
                 np.array([24.305, 55.845, 28.0855, 15.994]) * 1.660e-24
             )  # in grams

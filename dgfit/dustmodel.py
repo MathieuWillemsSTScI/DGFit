@@ -13,6 +13,7 @@ __all__ = [
     "ZDA04DustModel",
     "Y24DustModel",
     "HD23DustModel",
+    "Lognormal",
 ]
 
 
@@ -99,6 +100,8 @@ class DustModel(object):
             "Silicates-DL84",
             "AstroDust-DH21",
             "aSil-2-D22",
+            "DarkDust-S23",
+            "X50A-E20R-D22",
         ]
 
         # populate the grain info
