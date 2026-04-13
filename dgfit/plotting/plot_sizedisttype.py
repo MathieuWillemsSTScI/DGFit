@@ -11,6 +11,7 @@ from dgfit.dustmodel import (
     HD23DustModel,
     MRN77DustModel,
 )
+from dgfit.dustclasses import DustCompositions
 
 
 def set_grains_for_fitting(names):
@@ -63,25 +64,10 @@ def main():
     fig, ax = plt.subplots(figsize=(14, 9))
 
     if args.composition == "Carbon":
-        composition = [
-            "Carbonaceous-LD01",
-            "Graphite-LD93",
-            "Carbonaceous-DL07",
-            "amC-ACH2-Z96",
-            "amC-BE-Z96",
-            "amC-ACAR-Z96",
-            "a-C-J16",
-            "a-C:H-J16",
-        ]
+        composition = DustCompositions.carbonaceous_grains
 
     else:
-        composition = [
-            "Silicates-DL84",
-            "AstroDust-DH21",
-            "aSil-2-D22",
-            "DarkDust-S23",
-            "X50A-E20R-D22",
-        ]
+        composition = DustCompositions.silicate_grains
 
     # get the dust model on the full wavelength grid
     compnames = set_grains_for_fitting(composition)

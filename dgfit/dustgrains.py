@@ -7,6 +7,8 @@ from astropy.table import Table
 
 from scipy.interpolate import interp1d
 
+from dgfit.dustclasses import DustCompositions
+
 __all__ = ["DustGrains"]
 
 
@@ -54,21 +56,8 @@ class DustGrains(object):
         max_wave_emission = 1e6
 
         # check that the component name is allowed
-        _allowed_components = [
-            "Carbonaceous-LD01",
-            "Graphite-LD93",
-            "Carbonaceous-DL07",
-            "amC-ACH2-Z96",
-            "amC-BE-Z96",
-            "amC-ACAR-Z96",
-            "a-C-J16",
-            "a-C:H-J16",
-            "Silicates-DL84",
-            "AstroDust-DH21",
-            "aSil-2-D22",
-            "DarkDust-S23",
-            "X50A-E20R-D22",
-        ]
+        _allowed_components = DustCompositions.all_compositions
+
         if componentname not in _allowed_components:
             print(componentname + " not one of the allowed grain components")
             print(_allowed_components)
