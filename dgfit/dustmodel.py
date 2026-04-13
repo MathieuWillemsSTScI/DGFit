@@ -5,6 +5,7 @@ from scipy.special import erf
 from astropy.io import fits
 
 from dgfit.dustgrains import DustGrains
+from dgfit.dustclasses import DustCompositions
 
 __all__ = [
     "DustModel",
@@ -13,6 +14,7 @@ __all__ = [
     "ZDA04DustModel",
     "Y24DustModel",
     "HD23DustModel",
+    "Lognormal",
 ]
 
 
@@ -85,21 +87,8 @@ class DustModel(object):
         self.abundance_factor = abundance_factor
         self.prior_ranges = {}
         self.logs = {}
-        self.carbonaceous_names = [
-            "Carbonaceous-LD01",
-            "Graphite-LD93",
-            "Carbonaceous-DL07",
-            "amC-ACH2-Z96",
-            "amC-BE-Z96",
-            "amC-ACAR-Z96",
-            "a-C-J16",
-            "a-C:H-J16",
-        ]
-        self.silicate_names = [
-            "Silicates-DL84",
-            "AstroDust-DH21",
-            "aSil-2-D22",
-        ]
+        self.carbonaceous_names = DustCompositions.carbonaceous_grains
+        self.silicate_names = DustCompositions.silicate_grains
 
         # populate the grain info
         if componentnames is not None:

@@ -24,6 +24,7 @@ from dgfit.dustmodel import (
     Lognormal,
 )
 from dgfit.obsdata import ObsData
+from dgfit.dustclasses import DustCompositions
 
 
 def DGFit_cmdparser():
@@ -50,19 +51,7 @@ def DGFit_cmdparser():
         "--composition",
         nargs="+",
         default=["Carbonaceous-LD01", "Silicates-DL84"],
-        choices=[
-            "Carbonaceous-LD01",
-            "Graphite-LD93",
-            "Carbonaceous-DL07",
-            "amC-ACH2-Z96",
-            "amC-BE-Z96",
-            "amC-ACAR-Z96",
-            "a-C-J16",
-            "a-C:H-J16",
-            "Silicates-DL84",
-            "AstroDust-DH21",
-            "aSil-2-D22",
-        ],
+        choices=DustCompositions.all_compositions,
         help="Which grains to use",
     )
 
