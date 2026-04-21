@@ -558,7 +558,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "WD01":
         dustmodel = WD01DustModel(
@@ -568,7 +568,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "ZDA04":
         dustmodel = ZDA04DustModel(
@@ -578,7 +578,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "HD23":
         dustmodel = HD23DustModel(
@@ -588,7 +588,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "Y24":
         dustmodel = Y24DustModel(
@@ -598,7 +598,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "lognormals":
         dustmodel = Lognormal(
@@ -608,7 +608,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "bins":
         # bins dustmodel will be created in the parameter setup section

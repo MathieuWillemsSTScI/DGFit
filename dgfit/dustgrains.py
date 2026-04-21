@@ -75,7 +75,7 @@ class DustGrains(object):
                 np.array([24.305, 55.845, 28.0855, 15.994]) * 1.660e-24
             )  # in grams
 
-        elif componentname in ["aSil-2-D22"]:  # from Demyk et al. 2022
+        elif componentname in ["X35-X50B-D22"]:  # from Demyk et al. 2022
             self.density = 2.7  # g/cm^3
             self.atomic_composition = "MgSiO4"
             self.atomic_comp_names = ["Mg", "Si", "O", "C"]
@@ -146,7 +146,7 @@ class DustGrains(object):
             self.density = 1.72  # g/cm^3
             self.atomic_composition = "MgFeSiOC"
             self.atomic_comp_names = ["Mg", "Fe", "Si", "O", "C"]
-            self.atomic_comp_number = np.array([0.255, 0.003, 0.258, 0.773, 0.3])
+            self.atomic_comp_number = np.array([0.2982, 0.0018, 0.3, 0.9, 0.5])
             self.atomic_comp_masses = (
                 np.array([24.305, 55.845, 28.0855, 15.994, 12.0107]) * 1.660e-24
             )  # in grams
@@ -155,7 +155,7 @@ class DustGrains(object):
             self.density = 2.71  # g/cm^3
             self.atomic_composition = "MgFeSiO"
             self.atomic_comp_names = ["Mg", "Fe", "Si", "O"]
-            self.atomic_comp_number = np.array([0.509, 0.006, 0.515, 1.545])
+            self.atomic_comp_number = np.array([0.994, 0.006, 1, 3])
             self.atomic_comp_masses = (
                 np.array([24.305, 55.845, 28.0855, 15.994]) * 1.660e-24
             )  # in grams

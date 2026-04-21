@@ -1973,7 +1973,7 @@ class Y24DustModel(DustModel):
                         f"sigma_{i}": False,
                     }
 
-                elif component.name == "aSil-2-D22":
+                elif component.name == "X35-X50B-D22":
                     n = 3
                     self.parameters[component.name] = {
                         f"A_{i}": 6.9843816e-6 / (5.34e-22),
@@ -2054,7 +2054,7 @@ class Y24DustModel(DustModel):
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "aSil-2-D22":
+        if composition == "X35-X50B-D22":
             (indxs,) = np.where(np.logical_or(a < 0.011, a > 0.3737511))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
@@ -2100,7 +2100,7 @@ class Y24DustModel(DustModel):
                 if self.abundance_factor:
                     self.parameters[component.name][f"F_a_{k}"] = cparams[3]
 
-            elif component.name == "aSil-2-D22":
+            elif component.name == "X35-X50B-D22":
                 self.parameters[component.name] = {
                     f"A_{k}": cparams[0],
                     f"a_0_{k}": cparams[1],
@@ -2152,7 +2152,7 @@ class Y24DustModel(DustModel):
                 if cparams[3] <= 0:
                     lnp_bound = -np.inf
 
-            elif component.name in ["aSil-2-D22", "a-C:H-J16"]:
+            elif component.name in ["X35-X50B-D22", "a-C:H-J16"]:
                 if cparams[1] <= 0:
                     lnp_bound = -np.inf
 
