@@ -8,7 +8,7 @@ In all plots, it is possible to transform the particles and data to the observed
 General properties
 ------------------
 
-To plot the extinction coefficients, albedo, scattering phase function and emission of the used dustgrains (default is astro-silicates) in function of the grain size, use command
+To plot the extinction coefficients, albedo, scattering phase function and emission of the used dustgrains (default is Silicates-DL84) in function of the grain size, use command
 
 .. code-block:: console
 
