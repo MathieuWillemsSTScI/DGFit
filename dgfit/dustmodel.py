@@ -1407,7 +1407,7 @@ class ZDA04DustModel(DustModel):
                         f"m_4_{i}": 12.0995,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e12, 15],
+                        f"A_{i}": [1e12, 1e20],
                         f"c_0_{i}": [-15, 0],
                         f"b_0_{i}": [-7, -1],
                         f"b_1_{i}": [1e-12, 1e-4],
