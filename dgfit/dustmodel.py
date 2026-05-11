@@ -1451,7 +1451,7 @@ class ZDA04DustModel(DustModel):
                         f"b_0_{i}": [-6, 0],
                         f"b_1_{i}": [1e-32, 1e-20],
                         f"a_1_{i}": [0.0000001, 1e-4],
-                        f"m_1_{i}": [1, 50],
+                        f"m_1_{i}": [15, 50],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
