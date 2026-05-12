@@ -1327,13 +1327,13 @@ class ZDA04DustModel(DustModel):
                         f"m_3_{i}": 9.25894,  # 8.71891 /// 9.25894
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e12, 1e20],
+                        f"A_{i}": [1e11, 1e19],
                         f"c_0_{i}": [-15, -3],
                         f"b_0_{i}": [-15, -1],
-                        f"b_1_{i}": [5, 5e10],
-                        f"m_1_{i}": [-65, -5],
-                        f"a_3_{i}": [1e-7, 0.001],
-                        f"m_3_{i}": [5, 40],
+                        f"b_1_{i}": [1, 1e10],
+                        f"m_1_{i}": [-75, -5],
+                        f"a_3_{i}": [1e-8, 1e-3],
+                        f"m_3_{i}": [0, 40],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
@@ -1407,18 +1407,18 @@ class ZDA04DustModel(DustModel):
                         f"m_4_{i}": 12.0995,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e11, 1e20],
-                        f"c_0_{i}": [-20, 2],
+                        f"A_{i}": [1e10, 1e20],
+                        f"c_0_{i}": [-25, 5],
                         f"b_0_{i}": [-7, -1],
                         f"b_1_{i}": [1e-12, 1e-4],
-                        f"a_1_{i}": [0.0001, 0.5],
+                        f"a_1_{i}": [1e-5, 0.5],
                         f"m_1_{i}": [10, 150],
                         f"b_3_{i}": [5, 2000],
-                        f"a_3_{i}": [1e-6, 1e-3],
-                        f"m_3_{i}": [5, 100],
-                        f"b_4_{i}": [10, 2000],
-                        f"a_4_{i}": [0.0001, 1.0],
-                        f"m_4_{i}": [0, 75],
+                        f"a_3_{i}": [1e-8, 1e-2],
+                        f"m_3_{i}": [0, 100],
+                        f"b_4_{i}": [1, 2000],
+                        f"a_4_{i}": [1e-5, 1.0],
+                        f"m_4_{i}": [0, 100],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
@@ -1446,12 +1446,12 @@ class ZDA04DustModel(DustModel):
                         f"m_1_{i}": 34.7835,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e8, 1e16],
-                        f"c_0_{i}": [-7, 3],
+                        f"A_{i}": [1e7, 1e15],
+                        f"c_0_{i}": [-10, 5],
                         f"b_0_{i}": [-6, 0],
-                        f"b_1_{i}": [1e-35, 1e-15],
+                        f"b_1_{i}": [1e-40, 1e-20],
                         f"a_1_{i}": [1e-7, 1e-2],
-                        f"m_1_{i}": [5, 50],
+                        f"m_1_{i}": [0, 50],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
