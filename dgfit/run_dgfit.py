@@ -778,6 +778,7 @@ def main():
             points, log_w, log_l = sampler.posterior()
             map_index = np.argmax(log_l)
             opt_params = points[map_index]
+            print("Best fit parameters: ", opt_params)
             weights = np.exp(log_w)
 
             with h5py.File(f"posterior_samples_{args.tag}.h5", "w") as f:

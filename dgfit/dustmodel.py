@@ -1327,13 +1327,13 @@ class ZDA04DustModel(DustModel):
                         f"m_3_{i}": 9.25894,  # 8.71891 /// 9.25894
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e11, 1e19],
-                        f"c_0_{i}": [-15, -3],
-                        f"b_0_{i}": [-15, -1],
+                        f"A_{i}": [1e10, 1e20],
+                        f"c_0_{i}": [-15, 0],
+                        f"b_0_{i}": [-15, 0],
                         f"b_1_{i}": [1, 1e10],
-                        f"m_1_{i}": [-75, -5],
+                        f"m_1_{i}": [-75, 0],
                         f"a_3_{i}": [1e-8, 1e-3],
-                        f"m_3_{i}": [0, 40],
+                        f"m_3_{i}": [0, 50],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
@@ -1416,9 +1416,9 @@ class ZDA04DustModel(DustModel):
                         f"b_3_{i}": [5, 2000],
                         f"a_3_{i}": [1e-8, 1e-2],
                         f"m_3_{i}": [0, 100],
-                        f"b_4_{i}": [1, 2000],
-                        f"a_4_{i}": [1e-5, 1.0],
-                        f"m_4_{i}": [0, 100],
+                        f"b_4_{i}": [1e-1, 1e4],
+                        f"a_4_{i}": [1e-6, 1.0],
+                        f"m_4_{i}": [0, 120],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
@@ -1446,11 +1446,11 @@ class ZDA04DustModel(DustModel):
                         f"m_1_{i}": 34.7835,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e7, 1e15],
+                        f"A_{i}": [1e6, 1e15],
                         f"c_0_{i}": [-10, 5],
-                        f"b_0_{i}": [-6, 0],
+                        f"b_0_{i}": [-10, 0],
                         f"b_1_{i}": [1e-40, 1e-20],
-                        f"a_1_{i}": [1e-7, 1e-2],
+                        f"a_1_{i}": [1e-8, 1e-2],
                         f"m_1_{i}": [0, 50],
                     }
                     self.logs[component.name] = {
