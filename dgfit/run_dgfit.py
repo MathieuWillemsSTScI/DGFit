@@ -709,7 +709,6 @@ def main():
                 if args.limit_abund:
                     new_factor_C = factor_C * dustmodel.components[k].sizes[kk]
                     new_factor_sil = factor_sil * dustmodel.components[k].sizes[kk]
-                    print(new_factor_C, new_factor_sil)
                     if dustmodel.components[k].name in dustmodel.carbonaceous_names:
                         upper /= new_factor_C
                         lower /= new_factor_C
@@ -718,12 +717,13 @@ def main():
                         upper /= new_factor_sil
                         lower /= new_factor_sil
                         start_value /= new_factor_sil
+                    upper /= 15 *len(dustmodel.components[k].sizes)
 
 
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
                 )
-                p0.append(start_value)
+                p0.append(upper)
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
