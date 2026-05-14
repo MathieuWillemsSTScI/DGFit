@@ -111,8 +111,9 @@ def plot_dgfit_sizedist(
                 zorder=0,
             )
             j += length
-            if lowers[j] == 0.2:
-                j += 1
+            if j < len(lowers):
+                if lowers[j] == 0.2:
+                    j += 1
         if plot_uncs:
             ax.errorbar(
                 xvals[gindxs],
@@ -130,7 +131,7 @@ def plot_dgfit_sizedist(
     ymax = max(all_yvals) * 100
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_ylim(1e-10, ymax)
+    #ax.set_ylim(1e-10, ymax)
     ax.set_xlabel(r"a $[\mu m]$", fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
     if plegend:

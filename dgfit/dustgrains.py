@@ -290,7 +290,7 @@ class DustGrains(object):
             self.emission[:, k, :] *= 1e-4
 
             # default size distributions
-            self.size_dist[k] = self.sizes[k] ** (-4.0)
+            self.size_dist[k] = self.sizes[k] ** (-3.5)
 
         # aliases for albedo and g calculations
         #    here they are on the same wavelength grid

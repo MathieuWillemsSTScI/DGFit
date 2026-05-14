@@ -662,6 +662,9 @@ def main():
             abundance_factor=f_abund,
         )
 
+        if args.limit_abund:
+            factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
+
         eps = 1e-6
         p0 = []
         lowers = []
@@ -700,10 +703,27 @@ def main():
                     eps * (k + kk + 1)
                 )  # making sure the prior limits are not exactly the same, to avoid correlations that are not there
                 lower *= 1 - (eps * (k + kk + 1))
+
+                start_value = dustmodel.components[k].size_dist[kk] / 1e5
+
+                if args.limit_abund:
+                    new_factor_C = factor_C * dustmodel.components[k].sizes[kk]
+                    new_factor_sil = factor_sil * dustmodel.components[k].sizes[kk]
+                    print(new_factor_C, new_factor_sil)
+                    if dustmodel.components[k].name in dustmodel.carbonaceous_names:
+                        upper /= new_factor_C
+                        lower /= new_factor_C
+                        start_value /= new_factor_C
+                    else:
+                        upper /= new_factor_sil
+                        lower /= new_factor_sil
+                        start_value /= new_factor_sil
+
+
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
                 )
-                p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
+                p0.append(start_value)
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
