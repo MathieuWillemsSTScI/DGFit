@@ -717,6 +717,7 @@ def main():
                         upper /= new_factor_sil
                         lower /= new_factor_sil
                         start_value /= new_factor_sil
+                    upper *= 10
 
 
                 prior.add_parameter(
