@@ -717,13 +717,13 @@ def main():
                         upper /= new_factor_sil
                         lower /= new_factor_sil
                         start_value /= new_factor_sil
-                    upper /= 15 *len(dustmodel.components[k].sizes)
+                    upper /= 10 *len(dustmodel.components[k].sizes)
 
 
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
                 )
-                p0.append(upper)
+                p0.append(start_value)
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
