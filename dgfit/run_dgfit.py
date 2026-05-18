@@ -717,13 +717,13 @@ def main():
                         upper /= new_factor_sil
                         lower /= new_factor_sil
                         start_value /= new_factor_sil
-                    upper *= 10
+                    upper *= 10 / len(dustmodel.components[k].sizes)
 
 
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
                 )
-                p0.append(start_value)
+                p0.append(upper)
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
@@ -731,10 +731,10 @@ def main():
             n_deweighted_comp.append(n_deweighted)
             if args.abundance_factor:
                 pnames += [f"F_a{k}"]
-                prior.add_parameter(f"F_a{k}", dist=(0.2, 1))
+                prior.add_parameter(f"F_a{k}", dist=(0.2, 5))
                 p0.append(1)
                 lowers.append(0.2)
-                uppers.append(1)
+                uppers.append(5)
 
         if ISRF:
             pnames += ["RF"]
