@@ -114,7 +114,7 @@ def DGFit_cmdparser():
         help="Deweight sizes bigger than the cutoff size",
     )
     parser.add_argument(
-        "--cutoff", type=float, default=5.0, help="The cutoff size in micron"
+        "--cutoff", nargs="+", default=[5.0], help="The cutoff size in micron"
     )
     parser.add_argument(
         "--weight_by_average_unc",
@@ -678,7 +678,7 @@ def main():
             n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
-                    if dustmodel.components[k].sizes[kk] > (args.cutoff * 1e-4):
+                    if dustmodel.components[k].sizes[kk] > (float(args.cutoff[k]) * 1e-4):
                         print(
                             "Deweighting size",
                             dustmodel.components[k].sizes[kk] * 10000,
