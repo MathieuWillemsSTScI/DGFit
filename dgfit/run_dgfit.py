@@ -723,7 +723,7 @@ def main():
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
                 )
-                p0.append(upper)
+                p0.append(start_value)
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
