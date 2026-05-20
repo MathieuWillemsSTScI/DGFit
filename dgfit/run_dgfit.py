@@ -681,7 +681,7 @@ def main():
                     if dustmodel.components[k].sizes[kk] > (float(args.cutoff[k]) * 1e-4):
                         print(
                             "Deweighting size",
-                            dustmodel.components[k].sizes[kk] * 10000,
+                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
                             "microns",
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
@@ -695,7 +695,7 @@ def main():
                     if 0.024 < (dustmodel.components[k].sizes[kk] * 10000) < 0.026:
                         print(
                             "Deweighting size",
-                            dustmodel.components[k].sizes[kk] * 10000,
+                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
                             "microns",
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
@@ -709,7 +709,7 @@ def main():
                     if (dustmodel.components[k].sizes[kk] * 10000) < 0.02:
                         print(
                             "Deweighting size",
-                            dustmodel.components[k].sizes[kk] * 10000,
+                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
                             "microns",
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
