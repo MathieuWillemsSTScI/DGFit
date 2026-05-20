@@ -691,8 +691,8 @@ def main():
                         n_deweighted += 1
                         continue
                 
-                if dustmodel.components[k].name == "Silicates-DL84":
-                    if 0.024 < (dustmodel.components[k].sizes[kk] * 10000) < 0.026:
+                if k == 3:
+                    if (dustmodel.components[k].sizes[kk] * 10000) < 0.026:
                         print(
                             "Deweighting size",
                             np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
