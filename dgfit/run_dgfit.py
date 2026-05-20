@@ -690,6 +690,34 @@ def main():
                         uppers.append(0)
                         n_deweighted += 1
                         continue
+                
+                if dustmodel.components[k].name == "Silicates-DL84":
+                    if 0.024 < dustmodel.components[k].sizes[kk] < 0.026:
+                        print(
+                            "Deweighting size",
+                            dustmodel.components[k].sizes[kk] * 10000,
+                            "microns",
+                        )
+                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
+                        p0.append(0)
+                        lowers.append(0)
+                        uppers.append(0)
+                        n_deweighted += 1
+                        continue
+                
+                if dustmodel.components[k].name == "amC-ACH2-Z96":
+                    if dustmodel.components[k].sizes[kk] < 0.02:
+                        print(
+                            "Deweighting size",
+                            dustmodel.components[k].sizes[kk] * 10000,
+                            "microns",
+                        )
+                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
+                        p0.append(0)
+                        lowers.append(0)
+                        uppers.append(0)
+                        n_deweighted += 1
+                        continue
 
                 pnames += [
                     f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=5)}"
