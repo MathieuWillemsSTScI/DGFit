@@ -682,7 +682,8 @@ def main():
                         print(
                             "Deweighting size",
                             np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
-                            "microns",
+                            "microns for component",
+                            k + 1,
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
                         p0.append(0)
@@ -696,7 +697,8 @@ def main():
                         print(
                             "Deweighting size",
                             np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
-                            "microns",
+                            "microns for component",
+                            k + 1,
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
                         p0.append(0)
@@ -710,7 +712,8 @@ def main():
                         print(
                             "Deweighting size",
                             np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
-                            "microns",
+                            "microns for component",
+                            k + 1,
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
                         p0.append(0)
