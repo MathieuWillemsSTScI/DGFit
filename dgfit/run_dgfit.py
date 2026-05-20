@@ -692,7 +692,7 @@ def main():
                         continue
                 
                 if dustmodel.components[k].name == "Silicates-DL84":
-                    if 0.024 < dustmodel.components[k].sizes[kk] < 0.026:
+                    if 0.024 < (dustmodel.components[k].sizes[kk] * 10000) < 0.026:
                         print(
                             "Deweighting size",
                             dustmodel.components[k].sizes[kk] * 10000,
@@ -706,7 +706,7 @@ def main():
                         continue
                 
                 if dustmodel.components[k].name == "amC-ACH2-Z96":
-                    if dustmodel.components[k].sizes[kk] < 0.02:
+                    if (dustmodel.components[k].sizes[kk] * 10000) < 0.02:
                         print(
                             "Deweighting size",
                             dustmodel.components[k].sizes[kk] * 10000,
