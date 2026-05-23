@@ -171,6 +171,9 @@ def DGFit_cmdparser():
         action="store_true",
         help="Add an extra parameter to calculate the abundance fractions",
     )
+    parser.add_argument(
+        "--start_size", nargs="+", default=["none"], help="The start size in micron"
+    )
 
     return parser
 
@@ -691,37 +694,22 @@ def main():
                         uppers.append(0)
                         n_deweighted += 1
                         continue
-                
-                if k == 3:
-                    if (dustmodel.components[k].sizes[kk] * 10000) < 0.026:
-                        print(
-                            "Deweighting size",
-                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
-                            "microns for component",
-                            k + 1,
-                        )
-                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
-                        p0.append(0)
-                        lowers.append(0)
-                        uppers.append(0)
-                        n_deweighted += 1
-                        continue
-                
-                if dustmodel.components[k].name == "amC-ACH2-Z96":
-                    if (dustmodel.components[k].sizes[kk] * 10000) < 0.02:
-                        print(
-                            "Deweighting size",
-                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
-                            "microns for component",
-                            k + 1,
-                        )
-                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
-                        p0.append(0)
-                        lowers.append(0)
-                        uppers.append(0)
-                        n_deweighted += 1
-                        continue
 
+                if args.start_size[0] != "none":
+                    if (dustmodel.components[k].sizes[kk] * 10000) < float(args.start_size[k]):
+                        print(
+                            "Deweighting size",
+                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
+                            "microns for component",
+                            k + 1,
+                        )
+                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
+                        p0.append(0)
+                        lowers.append(0)
+                        uppers.append(0)
+                        n_deweighted += 1
+                        continue
+                
                 pnames += [
                     f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=5)}"
                 ]
