@@ -881,6 +881,8 @@ def main():
 
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")
+        if args.regularization:
+                print(f"ln(p) without regularization: {dustmodel.fracs[5]}")
         oname = f"{basename}_sizedist_best_optimizer.fits"
         dustmodel.save_results(oname, obsdata)
 
