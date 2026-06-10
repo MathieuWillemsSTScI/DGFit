@@ -413,7 +413,16 @@ def main():
     matplotlib.rc("xtick.major", width=2)
     matplotlib.rc("ytick.major", width=2)
 
-    fig, ax = pyplot.subplots(ncols=3, nrows=2, figsize=(15, 10))
+    fig, ax = pyplot.subplots(
+        ncols=2,
+        nrows=4,
+        figsize=(15, 16),
+        gridspec_kw={"height_ratios": [3, 3, 1, 3]},
+    )
+
+    # share x axes between main and residual panels
+    ax[2, 0].sharex(ax[1, 0])
+    ax[2, 1].sharex(ax[1, 1])
 
     # open the DGFit results
     hdulist = fits.open(args.filename)
@@ -427,7 +436,7 @@ def main():
         hdulist,
         fontsize=fontsize,
         mass=True,
-        plegend=True,
+        plegend=False,
         markers=args.markeverynth,
         file=args.priorfile,
     )
@@ -447,13 +456,47 @@ def main():
     plot_dgfit_extinction(ax[1, 0], hdulist["EXTINCTION"], OD, fontsize=fontsize)
 
     # plot the resulting total and component emission spectra
-    plot_dgfit_emission(ax[0, 2], hdulist["EMISSION"], OD, fontsize=fontsize)
+    plot_dgfit_emission(ax[1, 1], hdulist["EMISSION"], OD, fontsize=fontsize)
+
+    ext_hdu = hdulist["EXTINCTION"]
+    residuals_ext = (OD.ext_alav - ext_hdu.data["EXT"]) / OD.ext_alav
+    unc_ext = OD.ext_alav_unc / OD.ext_alav
+    ax[2, 0].plot(ext_hdu.data["WAVE"], residuals_ext, color="black")
+    ax[2, 0].fill_between(
+        ext_hdu.data["WAVE"],
+        residuals_ext - unc_ext,
+        residuals_ext + unc_ext,
+        color="k",
+        alpha=0.3,
+    )
+    ax[2, 0].axhline(0, color="red", linestyle="--", linewidth=1)
+    ax[2, 0].set_xscale("log")
+    ax[2, 0].set_ylim(-0.75, 0.75)
+    ax[2, 0].set_ylabel("Residuals\n(model-data)/data", fontsize=fontsize - 4)
+    ax[2, 0].set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
+
+    emis_hdu = hdulist["EMISSION"]
+    residuals_emis = (OD.ir_emission_av - emis_hdu.data["EMIS"]) / OD.ir_emission_av
+    unc_emis = OD.ir_emission_av_unc / OD.ir_emission_av
+    ax[2, 1].plot(emis_hdu.data["WAVE"], residuals_emis, color="black")
+    ax[2, 1].fill_between(
+        emis_hdu.data["WAVE"],
+        residuals_emis - unc_emis,
+        residuals_emis + unc_emis,
+        color="k",
+        alpha=0.3,
+    )
+    ax[2, 1].axhline(0, color="red", linestyle="--", linewidth=1)
+    ax[2, 1].set_xscale("log")
+    ax[2, 1].set_ylim(-0.75, 0.75)
+    ax[2, 1].set_ylabel("Residuals\n(model-data)/data", fontsize=fontsize - 4)
+    ax[2, 1].set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
 
     # plot the resulting albedos
-    plot_dgfit_albedo(ax[1, 1], hdulist["ALBEDO"], OD, fontsize=fontsize)
+    plot_dgfit_albedo(ax[3, 0], hdulist["ALBEDO"], OD, fontsize=fontsize)
 
     # plot the resulting g values
-    plot_dgfit_g(ax[1, 2], hdulist["G"], OD, fontsize=fontsize)
+    plot_dgfit_g(ax[3, 1], hdulist["G"], OD, fontsize=fontsize)
 
     if args.start:
         if "best_fin" in args.filename:
@@ -476,14 +519,17 @@ def main():
             ax[1, 0], hdulist2["EXTINCTION"], OD, fontsize=fontsize, ltype="--"
         )
         plot_dgfit_emission(
-            ax[0, 2], hdulist2["EMISSION"], OD, fontsize=fontsize, ltype="--"
+            ax[1, 1], hdulist2["EMISSION"], OD, fontsize=fontsize, ltype="--"
         )
         plot_dgfit_albedo(
-            ax[1, 1], hdulist2["ALBEDO"], OD, fontsize=fontsize, ltype="--"
+            ax[3, 0], hdulist2["ALBEDO"], OD, fontsize=fontsize, ltype="--"
         )
-        plot_dgfit_g(ax[1, 2], hdulist2["G"], OD, fontsize=fontsize, ltype="--")
+        plot_dgfit_g(ax[3, 1], hdulist2["G"], OD, fontsize=fontsize, ltype="--")
 
-    pyplot.tight_layout()
+    handles, labels = ax[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=len(handles), fontsize=fontsize, bbox_to_anchor=(0.5, 1.01))
+
+    pyplot.tight_layout(rect=[0, 0, 1, 0.97])
 
     # show or save
     basename = args.filename
