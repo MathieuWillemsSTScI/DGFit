@@ -131,7 +131,7 @@ def plot_dgfit_sizedist(
     ymax = max(all_yvals) * 100
     ax.set_xscale("log")
     ax.set_yscale("log")
-    #ax.set_ylim(1e-10, ymax)
+    # ax.set_ylim(1e-10, ymax)
     ax.set_xlabel(r"a $[\mu m]$", fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
     if plegend:
@@ -527,7 +527,14 @@ def main():
         plot_dgfit_g(ax[3, 1], hdulist2["G"], OD, fontsize=fontsize, ltype="--")
 
     handles, labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=len(handles), fontsize=fontsize, bbox_to_anchor=(0.5, 1.01))
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=len(handles),
+        fontsize=fontsize,
+        bbox_to_anchor=(0.5, 1.01),
+    )
 
     pyplot.tight_layout(rect=[0, 0, 1, 0.97])
 

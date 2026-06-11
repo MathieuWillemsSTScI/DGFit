@@ -681,10 +681,14 @@ def main():
             n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
-                    if dustmodel.components[k].sizes[kk] > (float(args.cutoff[k]) * 1e-4):
+                    if dustmodel.components[k].sizes[kk] > (
+                        float(args.cutoff[k]) * 1e-4
+                    ):
                         print(
                             "Deweighting size",
-                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
+                            np.round(
+                                dustmodel.components[k].sizes[kk] * 10000, decimals=4
+                            ),
                             "microns for component",
                             k + 1,
                         )
@@ -696,10 +700,14 @@ def main():
                         continue
 
                 if args.start_size[0] != "none":
-                    if (dustmodel.components[k].sizes[kk] * 10000) < float(args.start_size[k]):
+                    if (dustmodel.components[k].sizes[kk] * 10000) < float(
+                        args.start_size[k]
+                    ):
                         print(
                             "Deweighting size",
-                            np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=4),
+                            np.round(
+                                dustmodel.components[k].sizes[kk] * 10000, decimals=4
+                            ),
                             "microns for component",
                             k + 1,
                         )
@@ -709,7 +717,7 @@ def main():
                         uppers.append(0)
                         n_deweighted += 1
                         continue
-                
+
                 pnames += [
                     f"{dustmodel.components[k].name}_{np.round(dustmodel.components[k].sizes[kk] * 10000, decimals=5)}"
                 ]
@@ -737,7 +745,6 @@ def main():
                         lower /= new_factor_sil
                         start_value /= new_factor_sil
                     upper *= 10 / len(dustmodel.components[k].sizes)
-
 
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
@@ -882,7 +889,7 @@ def main():
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")
         if args.regularization:
-                print(f"ln(p) without regularization: {dustmodel.fracs[5]}")
+            print(f"ln(p) without regularization: {dustmodel.fracs[5]}")
         oname = f"{basename}_sizedist_best_optimizer.fits"
         dustmodel.save_results(oname, obsdata)
 
