@@ -128,7 +128,7 @@ def plot_dgfit_sizedist(
     else:
         ylabel = r"$N_d(a)/A(V)$"
 
-    ymax = max(all_yvals) * 100
+    # ymax = max(all_yvals) * 100
     ax.set_xscale("log")
     ax.set_yscale("log")
     # ax.set_ylim(1e-10, ymax)
