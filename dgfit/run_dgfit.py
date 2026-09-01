@@ -890,6 +890,21 @@ def main():
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")
         if args.regularization:
             print(f"ln(p) without regularization: {dustmodel.fracs[5]}")
+        print(
+            f"ln(p) extinction: {dustmodel.fracs[0]} = {np.round((dustmodel.fracs[0] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) emission: {dustmodel.fracs[2]} = {np.round((dustmodel.fracs[2] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) abundances: {dustmodel.fracs[1]} = {np.round((dustmodel.fracs[1] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) albedo: {dustmodel.fracs[3]} = {np.round((dustmodel.fracs[3] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) g: {dustmodel.fracs[4]} = {np.round((dustmodel.fracs[4] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
         oname = f"{basename}_sizedist_best_optimizer.fits"
         dustmodel.save_results(oname, obsdata)
 

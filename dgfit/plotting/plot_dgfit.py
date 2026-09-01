@@ -252,11 +252,18 @@ def plot_dgfit_emission(
             )
 
     if obsdata.obs_filenames["ir_emis"] is not None:
+        waves = obsdata.ir_emission_waves
+        waves_unc = obsdata.ir_emission_av_unc
+        i = 0
+        for wave in waves:
+            if wave in [3.3, 3.53]:
+                waves_unc[i] *= 10
+            i += 1
         if len(obsdata.ir_emission_av) < 25:
             ax.errorbar(
                 obsdata.ir_emission_waves,
                 obsdata.ir_emission_av,
-                yerr=obsdata.ir_emission_av_unc,
+                yerr=waves_unc,
                 fmt="o",
                 label="Observed",
                 color="black",
@@ -388,7 +395,7 @@ def main():
         "--start", help="include the starting model", action="store_true"
     )
     parser.add_argument(
-        "--markeverynth", type=int, default=2, help="Put a marker every nth point"
+        "--markeverynth", type=int, default=1, help="Put a marker every nth point"
     )
     parser.add_argument("--smc", help="use an SMC sightline", action="store_true")
     parser.add_argument(
@@ -476,8 +483,15 @@ def main():
     ax[2, 0].set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
 
     emis_hdu = hdulist["EMISSION"]
+    waves = OD.ir_emission_waves
+    waves_unc = OD.ir_emission_av_unc
+    i = 0
+    for wave in waves:
+        if wave in [3.3, 3.53]:
+            waves_unc[i] *= 10
+        i += 1
     residuals_emis = (OD.ir_emission_av - emis_hdu.data["EMIS"]) / OD.ir_emission_av
-    unc_emis = OD.ir_emission_av_unc / OD.ir_emission_av
+    unc_emis = waves_unc / OD.ir_emission_av
     ax[2, 1].plot(emis_hdu.data["WAVE"], residuals_emis, color="black")
     ax[2, 1].fill_between(
         emis_hdu.data["WAVE"],

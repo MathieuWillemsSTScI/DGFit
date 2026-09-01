@@ -3,8 +3,11 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as pyplot
 import matplotlib
+import importlib.resources as importlib_resources
 
 from astropy.io import fits
+
+from dgfit.dustmodel import DustModel, MRN77DustModel
 
 
 def get_krange(x, logaxis=False, in_range=[0]):
@@ -49,6 +52,7 @@ def plot(
     plegend=True,
     ltype="-",
     alpha=1.0,
+    everynth=1,
 ):
     if "DISTPUNC" in hdulist[1].data.names:
         plot_uncs = True
@@ -98,7 +102,7 @@ def plot(
             yvals[gindxs],
             colors[i] + ltype,
             marker=markers[i],
-            markevery=3,
+            markevery=everynth,
             label=hdu.header["EXTNAME"],
             alpha=alpha,
         )
@@ -110,6 +114,45 @@ def plot(
                 yerr=[yvals_munc[gindxs], yvals_punc[gindxs]],
                 alpha=alpha,
             )
+
+    MRN_compnames = ["Silicates-DL84"]
+    ref = importlib_resources.files("dgfit") / "data"
+    with importlib_resources.as_file(ref) as data_path:
+        dustmodel_MRN_full = DustModel(
+            componentnames=MRN_compnames,
+            path=str(data_path) + "/indiv_grain/",
+            every_nth=everynth,
+        )
+
+    dustmodel_MRN = MRN77DustModel(dustmodel=dustmodel_MRN_full)
+    p0 = []
+    for component in dustmodel_MRN.components:
+        cparams = dustmodel_MRN.parameters[component.name]
+        p0 += [
+            cparams["C"],
+            cparams["alpha"],
+            cparams["a_min"],
+            cparams["a_max"],
+        ]
+    cparams = dustmodel_MRN.parameters["Radiation field"]
+    p0 += [cparams["RF"]]
+    dustmodel_MRN.set_size_dist(p0)
+
+    for k, component in enumerate(dustmodel_MRN.components):
+        size_min = 1e-7
+        size_max = 1e-3
+        mask = (component.sizes >= size_min) & (component.sizes <= size_max)
+
+        if multa4:
+            sizes = (component.sizes[mask]) ** 4
+            dist = component.size_dist[mask] * sizes
+        elif mass:
+            sizes = (component.sizes[mask]) ** 3
+            dist = component.size_dist[mask] * sizes
+        else:
+            dist = component.size_dist[mask]
+
+        ax.plot(component.sizes[mask] * 1e4, dist, label="MRN77", color="black")
 
     if multa4:
         ylabel = r"$a^4 N_d(a)/A(V)$"
@@ -155,6 +198,12 @@ def main():
     parser.add_argument(
         "--mass", action="store_true", help="Show the mass distribution"
     )
+    parser.add_argument(
+        "--everynth",
+        type=int,
+        default=1,
+        help="Use every nth grain size",
+    )
     parser.add_argument("--smc", help="use an SMC sightline", action="store_true")
     parser.add_argument(
         "-p", "--png", help="save figure as a png file", action="store_true"
@@ -184,6 +233,7 @@ def main():
             fontsize=fontsize,
             multa4=args.multa4,
             mass=args.mass,
+            everynth=args.everynth,
             plegend=True,
         )
 
