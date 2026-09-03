@@ -114,7 +114,7 @@ def DGFit_cmdparser():
         help="Deweight sizes bigger than the cutoff size",
     )
     parser.add_argument(
-        "--cutoff", type=float, default=5.0, help="The cutoff size in micron"
+        "--cutoff", nargs="+", default=[5.0], help="The cutoff size in micron"
     )
     parser.add_argument(
         "--weight_by_average_unc",
@@ -170,6 +170,9 @@ def DGFit_cmdparser():
         "--abundance_factor",
         action="store_true",
         help="Add an extra parameter to calculate the abundance fractions",
+    )
+    parser.add_argument(
+        "--start_size", nargs="+", default=["none"], help="The start size in micron"
     )
 
     return parser
@@ -558,7 +561,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "WD01":
         dustmodel = WD01DustModel(
@@ -568,7 +571,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "ZDA04":
         dustmodel = ZDA04DustModel(
@@ -578,7 +581,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "HD23":
         dustmodel = HD23DustModel(
@@ -588,7 +591,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "Y24":
         dustmodel = Y24DustModel(
@@ -598,7 +601,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "lognormals":
         dustmodel = Lognormal(
@@ -608,7 +611,7 @@ def main():
             variable_ISRF=ISRF,
             divide_npoints=args.weight_by_average_unc,
             start_ISRF=args.start_ISRF,
-            f_abund=f_abund,
+            abundance_factor=f_abund,
         )
     elif sizedisttype == "bins":
         # bins dustmodel will be created in the parameter setup section
@@ -662,6 +665,9 @@ def main():
             abundance_factor=f_abund,
         )
 
+        if args.limit_abund:
+            factor_C, factor_sil = calc_sizedist_fact(dustmodel, obsdata)
+
         eps = 1e-6
         p0 = []
         lowers = []
@@ -675,11 +681,35 @@ def main():
             n_grains = dustmodel.calculate_priors(dustmodel.components[k], obsdata)
             for kk in range(len(dustmodel.components[k].size_dist)):
                 if args.nolarge:
-                    if dustmodel.components[k].sizes[kk] > (args.cutoff * 1e-4):
+                    if dustmodel.components[k].sizes[kk] > (
+                        float(args.cutoff[k]) * 1e-4
+                    ):
                         print(
                             "Deweighting size",
-                            dustmodel.components[k].sizes[kk] * 10000,
-                            "microns",
+                            np.round(
+                                dustmodel.components[k].sizes[kk] * 10000, decimals=4
+                            ),
+                            "microns for component",
+                            k + 1,
+                        )
+                        prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
+                        p0.append(0)
+                        lowers.append(0)
+                        uppers.append(0)
+                        n_deweighted += 1
+                        continue
+
+                if args.start_size[0] != "none":
+                    if (dustmodel.components[k].sizes[kk] * 10000) < float(
+                        args.start_size[k]
+                    ):
+                        print(
+                            "Deweighting size",
+                            np.round(
+                                dustmodel.components[k].sizes[kk] * 10000, decimals=4
+                            ),
+                            "microns for component",
+                            k + 1,
                         )
                         prior.add_parameter(f"c{k + 1}_s{kk + 1}", dist=0)
                         p0.append(0)
@@ -700,10 +730,26 @@ def main():
                     eps * (k + kk + 1)
                 )  # making sure the prior limits are not exactly the same, to avoid correlations that are not there
                 lower *= 1 - (eps * (k + kk + 1))
+
+                start_value = dustmodel.components[k].size_dist[kk] / 1e5
+
+                if args.limit_abund:
+                    new_factor_C = factor_C * dustmodel.components[k].sizes[kk]
+                    new_factor_sil = factor_sil * dustmodel.components[k].sizes[kk]
+                    if dustmodel.components[k].name in dustmodel.carbonaceous_names:
+                        upper /= new_factor_C
+                        lower /= new_factor_C
+                        start_value /= new_factor_C
+                    else:
+                        upper /= new_factor_sil
+                        lower /= new_factor_sil
+                        start_value /= new_factor_sil
+                    upper *= 10 / len(dustmodel.components[k].sizes)
+
                 prior.add_parameter(
                     f"c{k + 1}_s{kk + 1}", dist=loguniform(lower, upper)
                 )
-                p0.append(dustmodel.components[k].size_dist[kk] / 1e7)
+                p0.append(start_value)
                 lowers.append(lower)
                 uppers.append(upper)
                 used_sizes.append(float(dustmodel.components[k].sizes[kk] * 10000))
@@ -711,10 +757,10 @@ def main():
             n_deweighted_comp.append(n_deweighted)
             if args.abundance_factor:
                 pnames += [f"F_a{k}"]
-                prior.add_parameter(f"F_a{k}", dist=(0.2, 1))
+                prior.add_parameter(f"F_a{k}", dist=(0.2, 5))
                 p0.append(1)
                 lowers.append(0.2)
-                uppers.append(1)
+                uppers.append(5)
 
         if ISRF:
             pnames += ["RF"]
@@ -842,6 +888,23 @@ def main():
 
         dustmodel.set_size_dist(opt_params)
         print(f"ln(p): {dustmodel.lnprob(opt_params, obsdata, dustmodel)}")
+        if args.regularization:
+            print(f"ln(p) without regularization: {dustmodel.fracs[5]}")
+        print(
+            f"ln(p) extinction: {dustmodel.fracs[0]} = {np.round((dustmodel.fracs[0] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) emission: {dustmodel.fracs[2]} = {np.round((dustmodel.fracs[2] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) abundances: {dustmodel.fracs[1]} = {np.round((dustmodel.fracs[1] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) albedo: {dustmodel.fracs[3]} = {np.round((dustmodel.fracs[3] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
+        print(
+            f"ln(p) g: {dustmodel.fracs[4]} = {np.round((dustmodel.fracs[4] / dustmodel.fracs[5]) * 100, 2)}%"
+        )
         oname = f"{basename}_sizedist_best_optimizer.fits"
         dustmodel.save_results(oname, obsdata)
 

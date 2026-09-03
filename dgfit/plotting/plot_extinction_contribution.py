@@ -55,13 +55,14 @@ def plot_extinction(fits_filename, show_per_size=False, component_names=None):
     # per-component extinction
     colors = plt.cm.tab10.colors
     for i, (comp_name, comp_ext) in enumerate(total_per_component.items()):
-        ax.plot(
-            wavelengths,
-            comp_ext,
-            color=colors[i % len(colors)],
-            lw=1.5,
-            label=f"{comp_name}",
-        )
+        if comp_name in component_names:
+            ax.plot(
+                wavelengths,
+                comp_ext,
+                color=colors[i % len(colors)],
+                lw=1.5,
+                label=f"{comp_name}",
+            )
 
     if show_per_size:
         if isinstance(show_per_size, dict):
@@ -121,10 +122,15 @@ def main():
         ),
     )
 
+    parser.add_argument(
+        "component_name",
+        help="Name of components to plot",
+    )
+
     args = parser.parse_args()
 
     plot_extinction(
-        args.filename, show_per_size=True, component_names="astro-carbonaceous-WD01"
+        args.filename, show_per_size=True, component_names=args.component_name
     )
 
 

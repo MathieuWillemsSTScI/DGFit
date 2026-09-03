@@ -43,11 +43,11 @@ def get_krange(x, logaxis=False, in_range=[0]):
 def plot_dgfit_sizedist(
     ax,
     hdulist,
-    colors=["b", "g", "c", "y"],
+    colors=["C0", "C2", "C1", "C4", "C5", "C6"],
     fontsize=12,
     mass=True,
     plegend=True,
-    ltype=["o-", "x-", "D-", "-"],
+    ltype=["o-", "x-", "D-", "p-", "v-", "s-"],
     alpha=1.0,
     markers=1,
     file="none",
@@ -111,8 +111,9 @@ def plot_dgfit_sizedist(
                 zorder=0,
             )
             j += length
-            if lowers[j] == 0.2:
-                j += 1
+            if j < len(lowers):
+                if lowers[j] == 0.2:
+                    j += 1
         if plot_uncs:
             ax.errorbar(
                 xvals[gindxs],
@@ -127,10 +128,10 @@ def plot_dgfit_sizedist(
     else:
         ylabel = r"$N_d(a)/A(V)$"
 
-    ymax = max(all_yvals) * 100
+    # ymax = max(all_yvals) * 100
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_ylim(1e-10, ymax)
+    # ax.set_ylim(1e-10, ymax)
     ax.set_xlabel(r"a $[\mu m]$", fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
     if plegend:
@@ -186,7 +187,7 @@ def plot_dgfit_extinction(
     ax,
     hdu,
     obsdata,
-    colors=["r", "b", "g", "c", "y"],
+    colors=["C3", "C0", "C2", "C1", "C4", "C5", "C6"],
     fontsize=12,
     comps=True,
     ltype="-",
@@ -227,7 +228,7 @@ def plot_dgfit_emission(
     ax,
     hdu,
     obsdata,
-    colors=["r", "b", "g", "c", "y"],
+    colors=["C3", "C0", "C2", "C1", "C4", "C5", "C6"],
     fontsize=12,
     comps=True,
     ltype="-",
@@ -251,11 +252,18 @@ def plot_dgfit_emission(
             )
 
     if obsdata.obs_filenames["ir_emis"] is not None:
+        waves = obsdata.ir_emission_waves
+        waves_unc = obsdata.ir_emission_av_unc
+        i = 0
+        for wave in waves:
+            if wave in [3.3, 3.53]:
+                waves_unc[i] *= 10
+            i += 1
         if len(obsdata.ir_emission_av) < 25:
             ax.errorbar(
                 obsdata.ir_emission_waves,
                 obsdata.ir_emission_av,
-                yerr=obsdata.ir_emission_av_unc,
+                yerr=waves_unc,
                 fmt="o",
                 label="Observed",
                 color="black",
@@ -284,7 +292,7 @@ def plot_dgfit_albedo(
     ax,
     hdu,
     obsdata,
-    colors=["r", "b", "g", "c", "y"],
+    colors=["C3", "C0", "C2", "C1", "C4", "C5", "C6"],
     fontsize=12,
     comps=True,
     ltype="-",
@@ -329,7 +337,7 @@ def plot_dgfit_g(
     ax,
     hdu,
     obsdata,
-    colors=["r", "b", "g", "c", "y"],
+    colors=["C3", "C0", "C2", "C1", "C4", "C5", "C6"],
     fontsize=12,
     comps=True,
     ltype="-",
@@ -387,7 +395,7 @@ def main():
         "--start", help="include the starting model", action="store_true"
     )
     parser.add_argument(
-        "--markeverynth", type=int, default=2, help="Put a marker every nth point"
+        "--markeverynth", type=int, default=1, help="Put a marker every nth point"
     )
     parser.add_argument("--smc", help="use an SMC sightline", action="store_true")
     parser.add_argument(
@@ -412,7 +420,16 @@ def main():
     matplotlib.rc("xtick.major", width=2)
     matplotlib.rc("ytick.major", width=2)
 
-    fig, ax = pyplot.subplots(ncols=3, nrows=2, figsize=(15, 10))
+    fig, ax = pyplot.subplots(
+        ncols=2,
+        nrows=4,
+        figsize=(15, 16),
+        gridspec_kw={"height_ratios": [3, 3, 1, 3]},
+    )
+
+    # share x axes between main and residual panels
+    ax[2, 0].sharex(ax[1, 0])
+    ax[2, 1].sharex(ax[1, 1])
 
     # open the DGFit results
     hdulist = fits.open(args.filename)
@@ -426,7 +443,7 @@ def main():
         hdulist,
         fontsize=fontsize,
         mass=True,
-        plegend=True,
+        plegend=False,
         markers=args.markeverynth,
         file=args.priorfile,
     )
@@ -446,13 +463,54 @@ def main():
     plot_dgfit_extinction(ax[1, 0], hdulist["EXTINCTION"], OD, fontsize=fontsize)
 
     # plot the resulting total and component emission spectra
-    plot_dgfit_emission(ax[0, 2], hdulist["EMISSION"], OD, fontsize=fontsize)
+    plot_dgfit_emission(ax[1, 1], hdulist["EMISSION"], OD, fontsize=fontsize)
+
+    ext_hdu = hdulist["EXTINCTION"]
+    residuals_ext = (OD.ext_alav - ext_hdu.data["EXT"]) / OD.ext_alav
+    unc_ext = OD.ext_alav_unc / OD.ext_alav
+    ax[2, 0].plot(ext_hdu.data["WAVE"], residuals_ext, color="black")
+    ax[2, 0].fill_between(
+        ext_hdu.data["WAVE"],
+        residuals_ext - unc_ext,
+        residuals_ext + unc_ext,
+        color="k",
+        alpha=0.3,
+    )
+    ax[2, 0].axhline(0, color="red", linestyle="--", linewidth=1)
+    ax[2, 0].set_xscale("log")
+    ax[2, 0].set_ylim(-0.75, 0.75)
+    ax[2, 0].set_ylabel("Residuals\n(model-data)/data", fontsize=fontsize - 4)
+    ax[2, 0].set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
+
+    emis_hdu = hdulist["EMISSION"]
+    waves = OD.ir_emission_waves
+    waves_unc = OD.ir_emission_av_unc
+    i = 0
+    for wave in waves:
+        if wave in [3.3, 3.53]:
+            waves_unc[i] *= 10
+        i += 1
+    residuals_emis = (OD.ir_emission_av - emis_hdu.data["EMIS"]) / OD.ir_emission_av
+    unc_emis = waves_unc / OD.ir_emission_av
+    ax[2, 1].plot(emis_hdu.data["WAVE"], residuals_emis, color="black")
+    ax[2, 1].fill_between(
+        emis_hdu.data["WAVE"],
+        residuals_emis - unc_emis,
+        residuals_emis + unc_emis,
+        color="k",
+        alpha=0.3,
+    )
+    ax[2, 1].axhline(0, color="red", linestyle="--", linewidth=1)
+    ax[2, 1].set_xscale("log")
+    ax[2, 1].set_ylim(-0.75, 0.75)
+    ax[2, 1].set_ylabel("Residuals\n(model-data)/data", fontsize=fontsize - 4)
+    ax[2, 1].set_xlabel(r"$\lambda [\mu m]$", fontsize=fontsize)
 
     # plot the resulting albedos
-    plot_dgfit_albedo(ax[1, 1], hdulist["ALBEDO"], OD, fontsize=fontsize)
+    plot_dgfit_albedo(ax[3, 0], hdulist["ALBEDO"], OD, fontsize=fontsize)
 
     # plot the resulting g values
-    plot_dgfit_g(ax[1, 2], hdulist["G"], OD, fontsize=fontsize)
+    plot_dgfit_g(ax[3, 1], hdulist["G"], OD, fontsize=fontsize)
 
     if args.start:
         if "best_fin" in args.filename:
@@ -475,14 +533,24 @@ def main():
             ax[1, 0], hdulist2["EXTINCTION"], OD, fontsize=fontsize, ltype="--"
         )
         plot_dgfit_emission(
-            ax[0, 2], hdulist2["EMISSION"], OD, fontsize=fontsize, ltype="--"
+            ax[1, 1], hdulist2["EMISSION"], OD, fontsize=fontsize, ltype="--"
         )
         plot_dgfit_albedo(
-            ax[1, 1], hdulist2["ALBEDO"], OD, fontsize=fontsize, ltype="--"
+            ax[3, 0], hdulist2["ALBEDO"], OD, fontsize=fontsize, ltype="--"
         )
-        plot_dgfit_g(ax[1, 2], hdulist2["G"], OD, fontsize=fontsize, ltype="--")
+        plot_dgfit_g(ax[3, 1], hdulist2["G"], OD, fontsize=fontsize, ltype="--")
 
-    pyplot.tight_layout()
+    handles, labels = ax[0, 0].get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=len(handles),
+        fontsize=fontsize,
+        bbox_to_anchor=(0.5, 1.01),
+    )
+
+    pyplot.tight_layout(rect=[0, 0, 1, 0.97])
 
     # show or save
     basename = args.filename

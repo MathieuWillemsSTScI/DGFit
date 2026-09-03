@@ -534,7 +534,7 @@ class DustModel(object):
                 denom = 2 * (((big_sizes - small_sizes) / big_sizes) ** 2)
                 reg = np.sum(nom / denom)
                 lnp_reg += reg
-                lnp_reg /= 10
+                lnp_reg /= 15  # this is a bit of a magic number to get the regularization to be strong enough without dominating the fit
                 delta += n_params
 
         # update the size distributions
@@ -1327,13 +1327,13 @@ class ZDA04DustModel(DustModel):
                         f"m_3_{i}": 9.25894,  # 8.71891 /// 9.25894
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e16, 5e19],
-                        f"c_0_{i}": [-12, -5],
-                        f"b_0_{i}": [-15, -2],
-                        f"b_1_{i}": [5e2, 5e13],
-                        f"m_1_{i}": [-20, -5],
-                        f"a_3_{i}": [0, 0.1],
-                        f"m_3_{i}": [5, 15],
+                        f"A_{i}": [1e10, 1e20],
+                        f"c_0_{i}": [-15, 0],
+                        f"b_0_{i}": [-15, 0],
+                        f"b_1_{i}": [1, 1e10],
+                        f"m_1_{i}": [-75, 0],
+                        f"a_3_{i}": [1e-8, 1e-3],
+                        f"m_3_{i}": [0, 50],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
@@ -1341,7 +1341,7 @@ class ZDA04DustModel(DustModel):
                         f"b_0_{i}": False,
                         f"b_1_{i}": True,
                         f"m_1_{i}": False,
-                        f"a_3_{i}": False,
+                        f"a_3_{i}": True,
                         f"m_3_{i}": False,
                     }
 
@@ -1362,17 +1362,17 @@ class ZDA04DustModel(DustModel):
                         f"m_4_{i}": 3.636654,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e16, 5e19],
+                        f"A_{i}": [1e12, 1e20],
                         f"c_0_{i}": [-15, -5],
                         f"b_0_{i}": [-9, -1],
                         f"b_1_{i}": [1e-4, 1e-1],
-                        f"a_1_{i}": [0, 1],
+                        f"a_1_{i}": [0.0001, 1],
                         f"m_1_{i}": [0, 10],
                         f"b_3_{i}": [1e2, 1e4],
-                        f"a_3_{i}": [0, 1],
+                        f"a_3_{i}": [0.01, 1],
                         f"m_3_{i}": [0, 10],
                         f"b_4_{i}": [1e2, 1e4],
-                        f"a_4_{i}": [0, 1],
+                        f"a_4_{i}": [0.01, 1],
                         f"m_4_{i}": [0, 15],
                     }
                     self.logs[component.name] = {
@@ -1380,13 +1380,13 @@ class ZDA04DustModel(DustModel):
                         f"c_0_{i}": False,
                         f"b_0_{i}": False,
                         f"b_1_{i}": False,
-                        f"a_1_{i}": False,
+                        f"a_1_{i}": True,
                         f"m_1_{i}": False,
                         f"b_3_{i}": True,
-                        f"a_3_{i}": False,
+                        f"a_3_{i}": True,
                         f"m_3_{i}": False,
                         f"b_4_{i}": True,
-                        f"a_4_{i}": False,
+                        f"a_4_{i}": True,
                         f"m_4_{i}": False,
                     }
 
@@ -1407,31 +1407,31 @@ class ZDA04DustModel(DustModel):
                         f"m_4_{i}": 12.0995,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e16, 5e19],
-                        f"c_0_{i}": [-12, -5],
+                        f"A_{i}": [1e10, 1e20],
+                        f"c_0_{i}": [-25, 5],
                         f"b_0_{i}": [-7, -1],
-                        f"b_1_{i}": [1e-10, 1e-7],
-                        f"a_1_{i}": [0, 0.01],
-                        f"m_1_{i}": [10, 80],
-                        f"b_3_{i}": [500, 5000],
-                        f"a_3_{i}": [0, 1.0],
-                        f"m_3_{i}": [5, 25],
-                        f"b_4_{i}": [500, 5000],
-                        f"a_4_{i}": [0, 1.0],
-                        f"m_4_{i}": [5, 20],
+                        f"b_1_{i}": [1e-12, 1e-4],
+                        f"a_1_{i}": [1e-5, 0.5],
+                        f"m_1_{i}": [10, 150],
+                        f"b_3_{i}": [5, 2000],
+                        f"a_3_{i}": [1e-8, 1e-2],
+                        f"m_3_{i}": [0, 100],
+                        f"b_4_{i}": [1e-1, 1e4],
+                        f"a_4_{i}": [1e-6, 1.0],
+                        f"m_4_{i}": [0, 120],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
                         f"c_0_{i}": False,
                         f"b_0_{i}": False,
                         f"b_1_{i}": False,
-                        f"a_1_{i}": False,
+                        f"a_1_{i}": True,
                         f"m_1_{i}": False,
                         f"b_3_{i}": True,
-                        f"a_3_{i}": False,
+                        f"a_3_{i}": True,
                         f"m_3_{i}": False,
                         f"b_4_{i}": True,
-                        f"a_4_{i}": False,
+                        f"a_4_{i}": True,
                         f"m_4_{i}": False,
                     }
 
@@ -1446,19 +1446,19 @@ class ZDA04DustModel(DustModel):
                         f"m_1_{i}": 34.7835,
                     }
                     self.prior_ranges[component.name] = {
-                        f"A_{i}": [1e12, 1e15],
-                        f"c_0_{i}": [-6, 0],
-                        f"b_0_{i}": [-6, 0],
-                        f"b_1_{i}": [5e-31, 1e-16],
-                        f"a_1_{i}": [0, 1e-2],
-                        f"m_1_{i}": [20, 50],
+                        f"A_{i}": [1e6, 1e15],
+                        f"c_0_{i}": [-10, 5],
+                        f"b_0_{i}": [-10, 0],
+                        f"b_1_{i}": [1e-40, 1e-20],
+                        f"a_1_{i}": [1e-8, 1e-2],
+                        f"m_1_{i}": [0, 50],
                     }
                     self.logs[component.name] = {
                         f"A_{i}": True,
                         f"c_0_{i}": False,
                         f"b_0_{i}": False,
                         f"b_1_{i}": True,
-                        f"a_1_{i}": False,
+                        f"a_1_{i}": True,
                         f"m_1_{i}": False,
                     }
 
@@ -1973,7 +1973,7 @@ class Y24DustModel(DustModel):
                         f"sigma_{i}": False,
                     }
 
-                elif component.name == "aSil-2-D22":
+                elif component.name == "X35-X50B-D22":
                     n = 3
                     self.parameters[component.name] = {
                         f"A_{i}": 6.9843816e-6 / (5.34e-22),
@@ -2054,7 +2054,7 @@ class Y24DustModel(DustModel):
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
 
-        if composition == "aSil-2-D22":
+        if composition == "X35-X50B-D22":
             (indxs,) = np.where(np.logical_or(a < 0.011, a > 0.3737511))
             if len(indxs) > 0:
                 sizedist[indxs] = 0.0
@@ -2100,7 +2100,7 @@ class Y24DustModel(DustModel):
                 if self.abundance_factor:
                     self.parameters[component.name][f"F_a_{k}"] = cparams[3]
 
-            elif component.name == "aSil-2-D22":
+            elif component.name == "X35-X50B-D22":
                 self.parameters[component.name] = {
                     f"A_{k}": cparams[0],
                     f"a_0_{k}": cparams[1],
@@ -2152,7 +2152,7 @@ class Y24DustModel(DustModel):
                 if cparams[3] <= 0:
                     lnp_bound = -np.inf
 
-            elif component.name in ["aSil-2-D22", "a-C:H-J16"]:
+            elif component.name in ["X35-X50B-D22", "a-C:H-J16"]:
                 if cparams[1] <= 0:
                     lnp_bound = -np.inf
 

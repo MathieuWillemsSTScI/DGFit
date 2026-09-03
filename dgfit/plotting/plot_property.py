@@ -103,7 +103,7 @@ def main():
     )
     ax1 = ax[0]
     ax2 = ax[1]
-    colors = ["r", "b", "g", "c"]
+    colors = ["r", "b", "g", "c", "y"]
     ltype = "-"
 
     # open the DGFit results

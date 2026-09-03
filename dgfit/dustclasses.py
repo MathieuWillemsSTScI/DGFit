@@ -10,7 +10,7 @@ class DustCompositions:
         "a-C:H-J16",
         "Silicates-DL84",
         "AstroDust-DH21",
-        "aSil-2-D22",
+        "X35-X50B-D22",
         "DarkDust-S23",
         "X50A-E20R-D22",
     ]
@@ -18,7 +18,7 @@ class DustCompositions:
     silicate_grains = [
         "Silicates-DL84",
         "AstroDust-DH21",
-        "aSil-2-D22",
+        "X35-X50B-D22",
         "DarkDust-S23",
         "X50A-E20R-D22",
     ]
